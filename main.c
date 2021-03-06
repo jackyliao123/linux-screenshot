@@ -1,7 +1,4 @@
 #include <gtk/gtk.h>
-#include <gdk/gdk.h>
-#include <math.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "display.h"
@@ -10,12 +7,16 @@
 int main(int argc, char *argv[]) {
 	struct display_X11 *display = display_X11_create();
 
-	struct screenshot screenshot;
+	struct screenshot screenshot = {0};
 
 	display->impl->get_screenshot(display, &screenshot);
 	struct window_tree *tree = display->impl->get_windows(display);
 
+	gtk_init(NULL, NULL);
+
 	struct overlay *overlay = overlay_init(&screenshot, tree);
+
+	gtk_main();
 
 	//gdk_pixbuf_save(buf, "scrot.png", "png", NULL, NULL);
 	//g_object_unref(buf);

@@ -8,42 +8,43 @@
 #include "display.h"
 #include "display_X11.h"
 
-static void
-fill_node_from_window(Display *display, Window window, struct window_tree *node) {
-	Window root;
+#include <stdio.h>
+#include <stdbool.h>
+
+static bool
+fill_node_from_window(Display *display, Window root, Window window, struct window_tree *node) {
 	Window parent;
 	Window *children;
-	Window child;
-	unsigned int nchildren;
 
 	XWindowAttributes attrs;
 	XGetWindowAttributes(display, window, &attrs);
-
-	XTranslateCoordinates(display, window, root, -attrs.border_width,
-			-attrs.border_width, &node->bounds.x, &node->bounds.y, &child);
+	if(attrs.map_state != IsViewable) {
+		return false;
+	}
 	node->bounds.width = attrs.width;
 	node->bounds.height = attrs.height;
 
+	Window child;
+	XTranslateCoordinates(display, window, root, -attrs.border_width,
+			-attrs.border_width, &node->bounds.x, &node->bounds.y, &child);
+
+	unsigned int nchildren;
 	XQueryTree(display, window, &root, &parent, &children, &nchildren);
-	if (children == NULL) {
-		node->num_children = 0;
-		node->children = NULL;
-		return;
-	}
-	node->num_children = nchildren;
 	node->children = calloc(sizeof(struct window_tree), nchildren);
-	if (node->children == NULL) {
-		perror("malloc");
+	if (node->children == NULL && nchildren > 0) {
+		perror("malloc"); // TODO no errno is set by calloc
 		exit(1);
 	}
 
-	for (unsigned int i = 0; i < nchildren; ++i) {
-		Window child_win = children[i];
-		struct window_tree *child = &node->children[i];
-		fill_node_from_window(display, child_win, child);
+	node->num_children = 0;
+	for (size_t i = 0; i < nchildren; ++i) {
+		if(fill_node_from_window(display, root, children[i], &node->children[node->num_children])) {
+			node->num_children++;
+		}
 	}
 
 	XFree(children);
+	return true;
 }
 
 static void
@@ -71,7 +72,8 @@ get_screenshot(void *display_generic, struct screenshot *screenshot) {
 	shminfo.readOnly = False;
 	if (!XShmAttach(display->display, &shminfo)) {
 		perror("XShmAttach");
-		goto img_destroy;
+		exit(-1);
+//		goto img_destroy;
 	}
 
 	XShmGetImage(display->display, display->root, img, 0, 0, AllPlanes);
@@ -100,11 +102,11 @@ get_windows(void *display_generic) {
 	struct display_X11 *display = display_generic;
 	
 	struct window_tree *root_node = calloc(sizeof(struct window_tree), 1);
-	fill_tree_from_window(display->display, display->root, root_node);
+	fill_node_from_window(display->display, display->root, display->root, root_node);
 	return root_node;
 }
 
-static si
+static void
 get_dimensions(void *display_generic, size_t dimensions[2]) {
 	struct display_X11 *display = display_generic;
 	XWindowAttributes attrs;
@@ -118,8 +120,6 @@ static const struct display_impl display_impl = {
 	.get_windows = get_windows,
 	.get_dimensions = get_dimensions,
 };
-
-// if(window->attr.map_state == IsViewable) {
 
 struct display_X11 *
 display_X11_create() {

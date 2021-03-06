@@ -22,7 +22,7 @@ window_tree_get_window_under(struct window_tree *root, int x, int y) {
         return NULL;
     }
 	for(size_t i = 0; i < root->num_children; ++i) {
-        struct window_tree *under = window_tree_get_window_under(&root->children[root->num_children - i], x, y);
+        struct window_tree *under = window_tree_get_window_under(&root->children[root->num_children - i - 1], x, y);
         if(under) {
             return under;
         }

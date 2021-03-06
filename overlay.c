@@ -12,8 +12,6 @@ overlay_init(struct screenshot *screenshot, struct window_tree *tree) {
 	overlay.screenshot = screenshot;
 	overlay.tree = tree;
 
-	gtk_init(NULL, NULL);
-
 	int width = screenshot->width;
 	int height = screenshot->height;
 
@@ -22,17 +20,18 @@ overlay_init(struct screenshot *screenshot, struct window_tree *tree) {
 			screenshot->buf, fmt, width, height,
 			cairo_format_stride_for_width(fmt, width));
 
-	overlay.window = GTK_WINDOW(gtk_window_new(GTK_WINDOW_POPUP));
+	overlay.window = gtk_window_new(GTK_WINDOW_POPUP);
+//	overlay.window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_widget_set_size_request(overlay.window, width, height);
 
 	overlay.selection = selection_init(&overlay);
 	overlay.tooltip = tooltip_init(&overlay);
 
-	GtkOverlay *overlay_container = GTK_OVERLAY(gtk_overlay_new());
-	gtk_overlay_add_overlay(overlay_container, overlay.tooltip->widget);
-	gtk_overlay_add_overlay(overlay_container, overlay.selection->widget);
+	GtkWidget *overlay_container = gtk_overlay_new();
+	gtk_overlay_add_overlay(GTK_OVERLAY(overlay_container), overlay.selection->widget);
+	gtk_overlay_add_overlay(GTK_OVERLAY(overlay_container), overlay.tooltip->widget);
 
-	gtk_container_add(overlay.window, overlay_container);
+	gtk_container_add(GTK_CONTAINER(overlay.window), overlay_container);
 	gtk_widget_set_events(overlay.window, GDK_POINTER_MOTION_MASK);
 	gtk_widget_show_all(overlay.window);
 
@@ -48,8 +47,6 @@ overlay_init(struct screenshot *screenshot, struct window_tree *tree) {
 		fprintf(stderr, "Cursor grabbing failed\n");
 		exit(-1);
 	}
-}
 
-void overlay_loop() {
-	gtk_main();
+	return &overlay;
 }

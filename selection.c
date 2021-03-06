@@ -1,16 +1,12 @@
 #include "selection.h"
 #include "overlay.h"
 
-struct selection selection;
-struct overlay *overlay;
+static struct selection selection;
+static struct overlay *overlay;
 
 
-gint draw_bg(GtkWidget *widget, cairo_t *cr, gpointer data) {
-	guint width, height;
-
-	width = gtk_widget_get_allocated_width(widget);
-	height = gtk_widget_get_allocated_height(widget);
-
+static gint
+draw_bg(GtkWidget *widget, cairo_t *cr, gpointer data) {
 	cairo_set_source_surface(cr, overlay->screenshot_surface, 0, 0);
 	cairo_pattern_set_filter(cairo_get_source(cr), CAIRO_FILTER_NEAREST);
 	cairo_paint(cr);
@@ -30,7 +26,8 @@ gint draw_bg(GtkWidget *widget, cairo_t *cr, gpointer data) {
 	return False;
 }
 
-gboolean event_mouse_move(GtkWidget *widget, GdkEventMotion *event) {
+static gboolean
+event_mouse_move(GtkWidget *widget, GdkEventMotion *event) {
     int mouse_x = event->x;
     int mouse_y = event->y;
 
@@ -46,7 +43,7 @@ gboolean event_mouse_move(GtkWidget *widget, GdkEventMotion *event) {
 	}
 
 	if(selection.state == SELECTION_STATUS_NONE || selection.state == SELECTION_STATUS_TEMP) {
-		struct window_tree *window = get_window_under(overlay->tree, mouse_x, mouse_y);
+		struct window_tree *window = window_tree_get_window_under(overlay->tree, mouse_x, mouse_y);
 		if(window != NULL) {
 			selection.state = SELECTION_STATUS_TEMP;
 			selection.x1 = window->bounds.x;
@@ -61,7 +58,8 @@ gboolean event_mouse_move(GtkWidget *widget, GdkEventMotion *event) {
 	return False;
 }
 
-gboolean event_mouse_press(GtkWidget *widget, GdkEventButton *event) {
+static gboolean
+event_mouse_press(GtkWidget *widget, GdkEventButton *event) {
 	if(selection.state == SELECTION_STATUS_NONE) {
 		selection.x1 = event->x;
 		selection.y1 = event->y;
@@ -70,7 +68,8 @@ gboolean event_mouse_press(GtkWidget *widget, GdkEventButton *event) {
 	return False;
 }
 
-gboolean event_mouse_release(GtkWidget *widget, GdkEventButton *event) {
+static gboolean
+event_mouse_release(GtkWidget *widget, GdkEventButton *event) {
 	if(selection.state == SELECTION_STATUS_CREATE) {
 		selection.x2 = event->x;
 		selection.y2 = event->y;
@@ -82,7 +81,8 @@ gboolean event_mouse_release(GtkWidget *widget, GdkEventButton *event) {
 }
 
 
-gboolean event_key_press(GtkWidget *widget, GdkEventKey *event) {
+static gboolean
+event_key_press(GtkWidget *widget, GdkEventKey *event) {
 	printf("Key down\n");
 	guint16 code = event->hardware_keycode;
 	if(code == 9) {
@@ -101,7 +101,7 @@ struct selection *
 selection_init(struct overlay *o) {
     overlay = o;
 
-	selection.bgimage = GTK_DRAWING_AREA(gtk_drawing_area_new());
+	selection.bgimage = gtk_drawing_area_new();
 
     g_signal_connect(overlay->window, "button-press-event", G_CALLBACK(event_mouse_press), NULL);
     g_signal_connect(overlay->window, "button-release-event", G_CALLBACK(event_mouse_release), NULL);
@@ -109,5 +109,6 @@ selection_init(struct overlay *o) {
     g_signal_connect(overlay->window, "motion-notify-event", G_CALLBACK(event_mouse_move), NULL);
 	g_signal_connect(selection.bgimage, "draw", G_CALLBACK(draw_bg), NULL);
 
+	selection.widget = selection.bgimage;
     return &selection;
 }

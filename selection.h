@@ -3,6 +3,7 @@
 
 #include <gtk/gtk.h>
 
+struct overlay;
 
 enum selection_status {
     SELECTION_STATUS_NONE = 0,
@@ -16,7 +17,7 @@ struct selection {
 
     int x1, y1, x2, y2;
     enum selection_status state;
-    GtkDrawingArea* bgimage;
+    GtkWidget* bgimage;
 };
 
 struct selection *selection_init(struct overlay *overlay);

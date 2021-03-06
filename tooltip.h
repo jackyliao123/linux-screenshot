@@ -5,14 +5,16 @@
 
 #include "display.h"
 
+struct overlay;
+
 struct tooltip {
 	GtkWidget *widget;
-    GtkFixed *fixed;
+    GtkWidget *fixed;
     GtkWidget *popup;
     double zoom_amount;
     int mouse_x;
     int mouse_y;
-    GtkLabel **labels;
+    GtkWidget **labels;
     size_t label_cnt;
 };
 
