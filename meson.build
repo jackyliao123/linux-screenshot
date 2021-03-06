@@ -1,4 +1,10 @@
-project('linux-screenshot', 'c')
+project(
+  'linux-screenshot',
+  'c',
+  default_options: [
+    'c_std=c11',
+  ],
+)
 
 cc = meson.get_compiler('c')
 
@@ -8,13 +14,23 @@ gtk_dep = dependency('gtk+-3.0')
 X11_dep = dependency('X11')
 Xext_dep = dependency('xext')
 
+src_files = files(
+  'main.c',
+  'display_X11.c',
+  'overlay.c',
+  'tooltip.c',
+  'selection.c',
+  'window_tree.c',
+)
+
 executable(
   'screenshot',
-  'main.c',
+  src_files,
   dependencies: [
     gtk_dep,
     X11_dep,
     Xext_dep,
     m_dep,
-  ]
+  ],
+  install: true,
 )
