@@ -4,16 +4,12 @@
 #include <unistd.h>
 
 #include "display_X11.h"
-#include "window_tree.h"
+#include "geometry.h"
 
 struct screenshot {
 	void *buf; // What is this format? RGBA8888?
 	size_t width, height;
 };
-//
-//struct output {
-//	char *name;
-//};
 
 struct display_impl {
 	void (*get_screenshot)(void *display, struct screenshot *screenshot);

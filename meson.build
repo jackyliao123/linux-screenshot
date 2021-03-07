@@ -20,7 +20,7 @@ src_files = files(
   'overlay.c',
   'tooltip.c',
   'selection.c',
-  'window_tree.c',
+  'geometry.c',
 )
 
 executable(

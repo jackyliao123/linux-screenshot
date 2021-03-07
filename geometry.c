@@ -1,6 +1,6 @@
 #include <stdbool.h>
 
-#include "window_tree.h"
+#include "geometry.h"
 
 static bool
 contains(struct window_tree *window, int x, int y) {
