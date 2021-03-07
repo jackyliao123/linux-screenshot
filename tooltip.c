@@ -198,7 +198,7 @@ tooltip_init(struct overlay *o) {
 	gtk_box_pack_start(GTK_BOX(box), grid, TRUE, TRUE, 0);
 
 	GtkWidget *fixed = gtk_fixed_new();
-	gtk_fixed_put(GTK_FIXED(fixed), box, 50, 50);
+	gtk_fixed_put(GTK_FIXED(fixed), box, 0, 0);
 
 	g_signal_connect(overlay->window, "scroll-event", G_CALLBACK(event_scroll), NULL);
 	g_signal_connect(overlay->window, "motion-notify-event", G_CALLBACK(event_mouse_move), NULL);

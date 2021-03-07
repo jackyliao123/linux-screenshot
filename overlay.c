@@ -20,9 +20,26 @@ overlay_init(struct screenshot *screenshot, struct window_tree *tree) {
 			screenshot->buf, fmt, width, height,
 			cairo_format_stride_for_width(fmt, width));
 
+//	overlay.window = gtk_window_new(GTK_WINDOW_POPUP);
+
+//	GdkWindowAttr attr = {0};
+//	attr.override_redirect = True;
+//	attr.x = 0;
+//	attr.y = 0;
+//	attr.width = screenshot->width;
+//	attr.height = screenshot->height;
+//	attr.window_type = GDK_WINDOW_TOPLEVEL;
+//	attr.title = "asdfasdf";
+//	attr.event_mask = 0;
+//
+//	GdkWindow *gdk_window = gdk_window_new(NULL, &attr, GDK_WA_NOREDIR | GDK_WA_X | GDK_WA_Y);
+//	gdk_window_show(gdk_window);
+//	return &overlay;
+
 	overlay.window = gtk_window_new(GTK_WINDOW_POPUP);
-//	overlay.window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+//	gtk_window_set_decorated(GTK_WINDOW(overlay.window), False);
 	gtk_widget_set_size_request(overlay.window, width, height);
+//	gtk_window_fullscreen(GTK_WINDOW(overlay.window));
 
 	overlay.selection = selection_init(&overlay);
 	overlay.tooltip = tooltip_init(&overlay);
@@ -40,6 +57,8 @@ overlay_init(struct screenshot *screenshot, struct window_tree *tree) {
 	GdkDisplay *g_display = gdk_window_get_display(g_window);
 
 	gdk_window_set_cursor(g_window, gdk_cursor_new_from_name(g_display, "crosshair"));
+
+	gdk_window_set_override_redirect(g_window, True);
 
 	GdkSeat *g_seat = gdk_display_get_default_seat(g_display);
 

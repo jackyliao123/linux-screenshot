@@ -1,6 +1,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/XShm.h>
+#include <X11/extensions/Xrandr.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sys/shm.h>
@@ -11,8 +12,19 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+struct display_X11 display;
+
+static int clamp(int v, int min, int max) {
+	if(v < min) {
+		return min;
+	} else if(v > max) {
+		return max;
+	}
+	return v;
+}
+
 static bool
-fill_node_from_window(Display *display, Window root, Window window, struct window_tree *node) {
+fill_node_from_window(Display *display, Window root, Window window, struct window_tree *node, struct window_tree *parent_node) {
 	Window parent;
 	Window *children;
 
@@ -27,6 +39,19 @@ fill_node_from_window(Display *display, Window root, Window window, struct windo
 	Window child;
 	XTranslateCoordinates(display, window, root, -attrs.border_width,
 			-attrs.border_width, &node->bounds.x, &node->bounds.y, &child);
+	// Clip to parent bounds
+	if(parent_node != NULL) {
+		int x2 = node->bounds.x + node->bounds.width;
+		int y2 = node->bounds.y + node->bounds.height;
+		int px2 = parent_node->bounds.x + parent_node->bounds.width;
+		int py2 = parent_node->bounds.y + parent_node->bounds.height;
+		node->bounds.x = clamp(node->bounds.x, parent_node->bounds.x, px2);
+		node->bounds.y = clamp(node->bounds.y, parent_node->bounds.y, py2);
+		x2 = clamp(x2, parent_node->bounds.x, px2);
+		y2 = clamp(y2, parent_node->bounds.y, py2);
+		node->bounds.width = x2 - node->bounds.x;
+		node->bounds.height = y2 - node->bounds.y;
+	}
 
 	unsigned int nchildren;
 	XQueryTree(display, window, &root, &parent, &children, &nchildren);
@@ -38,7 +63,7 @@ fill_node_from_window(Display *display, Window root, Window window, struct windo
 
 	node->num_children = 0;
 	for (size_t i = 0; i < nchildren; ++i) {
-		if(fill_node_from_window(display, root, children[i], &node->children[node->num_children])) {
+		if(fill_node_from_window(display, root, children[i], &node->children[node->num_children], node)) {
 			node->num_children++;
 		}
 	}
@@ -102,32 +127,38 @@ get_windows(void *display_generic) {
 	struct display_X11 *display = display_generic;
 	
 	struct window_tree *root_node = calloc(sizeof(struct window_tree), 1);
-	fill_node_from_window(display->display, display->root, display->root, root_node);
+	fill_node_from_window(display->display, display->root, display->root, root_node, NULL);
 	return root_node;
 }
 
-static void
-get_dimensions(void *display_generic, size_t dimensions[2]) {
-	struct display_X11 *display = display_generic;
-	XWindowAttributes attrs;
-	XGetWindowAttributes(display->display, display->root, &attrs);
-	dimensions[0] = attrs.width;
-	dimensions[1] = attrs.height;
-}
+//static void
+//get_outputs(void *display_generic, size_t dimensions[2]) {
+//	XRRScreenResources *xrr_screen = XRRGetScreenResourcesCurrent(display, root);
+//	for(int i = 0; i < xrr_screen->ncrtc; ++i) {
+//		XRRCrtcInfo *xrr_crtc = XRRGetCrtcInfo(display, xrr_screen, xrr_screen->crtcs[i]);
+//		int crtc_ind = add_crtc(xrr_crtc->width, xrr_crtc->height, xrr_crtc->x, xrr_crtc->y);
+//		for(int j = 0; j < xrr_crtc->noutput; ++j) {
+//			XRROutputInfo *xrr_output = XRRGetOutputInfo(display, xrr_screen, xrr_crtc->outputs[j]);
+//			add_output(xrr_output->name, xrr_output->nameLen, crtc_ind);
+//			XRRFreeOutputInfo(xrr_output);
+//		}
+//		XRRFreeCrtcInfo(xrr_crtc);
+//	}
+//	XRRFreeScreenResources(xrr_screen);
+//}
 
 static const struct display_impl display_impl = {
 	.get_screenshot = get_screenshot,
 	.get_windows = get_windows,
-	.get_dimensions = get_dimensions,
+//	.get_outputs = get_outputs,
 };
 
 struct display_X11 *
 display_X11_create() {
-	struct display_X11 *display = calloc(sizeof(struct display_X11), 1);
-	display->impl = &display_impl;
+	display.impl = &display_impl;
 
-	display->display = XOpenDisplay(NULL);
-	display->root = DefaultRootWindow(display->display);
+	display.display = XOpenDisplay(NULL);
+	display.root = DefaultRootWindow(display.display);
 
-	return display;
+	return &display;
 }
