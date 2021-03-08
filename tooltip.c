@@ -122,12 +122,21 @@ event_mouse_move(GtkWidget *widget, GdkEventMotion *event) {
     tooltip.mouse_x = event->x;
     tooltip.mouse_y = event->y;
 
+    struct rect bounds = {0};
+    struct output *output = geom_get_output_under(overlay->outputs, tooltip.mouse_x, tooltip.mouse_y);
+    if(output) {
+    	bounds = output->bounds;
+    } else {
+    	bounds.x2 = overlay->screenshot->width;
+	    bounds.y2 = overlay->screenshot->height;
+    }
+
 	gint place_x = tooltip.mouse_x;
     gint place_y = tooltip.mouse_y;
-	if(place_x + width + 40 > overlay->screenshot->width) {
+	if(place_x + width + 40 > bounds.x2) {
 		place_x -= width + 40;
 	}
-	if(place_y + height + 40 > overlay->screenshot->height) {
+	if(place_y + height + 40 > bounds.y2) {
 		place_y -= height + 40;
 	}
 

@@ -11,6 +11,8 @@ add_definitions(${GTK3_CFLAGS_OTHER})
 
 file(GLOB src "*.c")
 
+set(CMAKE_C_FLAGS "-fbounds-check")
+
 add_executable(screenshot ${src})
 
 target_link_libraries(screenshot ${GTK3_LIBRARIES} m Xrandr Xext X11)
