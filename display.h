@@ -12,9 +12,9 @@ struct screenshot {
 };
 
 struct display_impl {
-	void (*get_screenshot)(void *display, struct screenshot *screenshot);
-	struct window_tree *(*get_windows)(void *display);
-//	void (*get_dimensions)(void *display, size_t dims[static 2]);
+	void (*get_screenshot)(struct screenshot *screenshot);
+	struct window_tree *(*get_windows)();
+	void (*get_outputs)(struct output_list *outputs);
 };
 
 #endif

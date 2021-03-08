@@ -11,6 +11,7 @@ struct tooltip {
 	GtkWidget *widget;
     GtkWidget *fixed;
     GtkWidget *popup;
+    GtkWidget *zoom;
     double zoom_amount;
     int mouse_x;
     int mouse_y;
@@ -19,5 +20,6 @@ struct tooltip {
 };
 
 struct tooltip *tooltip_init(struct overlay *overlay);
+void tooltip_post_init();
 
 #endif

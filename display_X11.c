@@ -15,13 +15,15 @@
 
 struct display_X11 display;
 
-static int clamp(int v, int min, int max) {
-	if(v < min) {
-		return min;
-	} else if(v > max) {
-		return max;
+static char *
+clone_str(const char *str) {
+	if(!str) {
+		return NULL;
 	}
-	return v;
+	size_t len = strlen(str);
+	char *new_str = malloc(len + 1);
+	memcpy(new_str, str, len + 1);
+	return new_str;
 }
 
 static bool
@@ -31,25 +33,18 @@ fill_node_from_window(Window window, struct window_tree *node) {
 	if(attrs.map_state != IsViewable) {
 		return false;
 	}
-	node->bounds.width = attrs.width;
-	node->bounds.height = attrs.height;
+
+	char *window_name = NULL;
+	XFetchName(display.display, window, &window_name);
+	node->name = clone_str(window_name);
+	XFree(window_name);
 
 	Window child;
 	XTranslateCoordinates(display.display, window, display.root, -attrs.border_width,
-	                      -attrs.border_width, &node->bounds.x, &node->bounds.y, &child);
-	// Clip to parent bounds
-	if(node->parent != NULL) {
-		int x2 = node->bounds.x + node->bounds.width;
-		int y2 = node->bounds.y + node->bounds.height;
-		int px2 = node->parent->bounds.x + node->parent->bounds.width;
-		int py2 = node->parent->bounds.y + node->parent->bounds.height;
-		node->bounds.x = clamp(node->bounds.x, node->parent->bounds.x, px2);
-		node->bounds.y = clamp(node->bounds.y, node->parent->bounds.y, py2);
-		x2 = clamp(x2, node->parent->bounds.x, px2);
-		y2 = clamp(y2, node->parent->bounds.y, py2);
-		node->bounds.width = x2 - node->bounds.x;
-		node->bounds.height = y2 - node->bounds.y;
-	}
+	                      -attrs.border_width, &node->bounds.x1, &node->bounds.y1, &child);
+	node->bounds.x2 = node->bounds.x1 + attrs.width;
+	node->bounds.y2 = node->bounds.y1 + attrs.height;
+	geom_clip_to_parent(node);
 
 	Window garbage1, garbage2;
 	Window *children;
@@ -67,10 +62,6 @@ fill_node_from_window(Window window, struct window_tree *node) {
 		if(fill_node_from_window(children[i], &node->children[node->num_children])) {
 			node->num_children++;
 		}
-	}
-	void *shrink = realloc(node->children, sizeof(struct window_tree) * node->num_children);
-	if(shrink) {
-		node->children = shrink;
 	}
 
 	XFree(children);
@@ -143,10 +134,10 @@ get_outputs(struct output_list *output_list) {
 	for(int i = 0; i < xrr_screen->ncrtc; ++i) {
 		XRRCrtcInfo *xrr_crtc = XRRGetCrtcInfo(display.display, xrr_screen, xrr_screen->crtcs[i]);
 		struct rect bounds = {
-				.x = xrr_crtc->x,
-				.y = xrr_crtc->y,
-				.width = xrr_crtc->width,
-				.height = xrr_crtc->height,
+				.x1 = xrr_crtc->x,
+				.y1 = xrr_crtc->y,
+				.x2 = xrr_crtc->x + (int) xrr_crtc->width,
+				.y2 = xrr_crtc->y + (int) xrr_crtc->height,
 		};
 		for(int j = 0; j < xrr_crtc->noutput; ++j) {
 			XRROutputInfo *xrr_output = XRRGetOutputInfo(display.display, xrr_screen, xrr_crtc->outputs[j]);
@@ -155,7 +146,7 @@ get_outputs(struct output_list *output_list) {
 				array_size *= 2;
 				outputs = realloc(outputs, sizeof(struct output) * array_size);
 			}
-//			outputs[nentries].name =  TODO COPY NAME TODO TODO TODO TODO
+			outputs[nentries].name = clone_str(xrr_output->name);
 
 			outputs[nentries].bounds = bounds;
 			nentries++;
@@ -166,14 +157,14 @@ get_outputs(struct output_list *output_list) {
 	}
 	XRRFreeScreenResources(xrr_screen);
 
-	output_list->outputs = realloc(outputs, sizeof(struct output) * nentries);
+	output_list->outputs = outputs;
 	output_list->num_output = nentries;
 }
 
 static const struct display_impl display_impl = {
 	.get_screenshot = get_screenshot,
 	.get_windows = get_windows,
-//	.get_outputs = get_outputs,
+	.get_outputs = get_outputs,
 };
 
 struct display_X11 *

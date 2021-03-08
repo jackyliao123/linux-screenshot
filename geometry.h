@@ -2,10 +2,11 @@
 #define WINDOW_TREE_H
 
 #include <stddef.h>
+#include <stdbool.h>
 
 struct rect {
-	int x, y;
-	int width, height;
+	int x1, y1; // inclusive
+	int x2, y2; // exclusive
 };
 
 struct output {
@@ -26,6 +27,12 @@ struct window_tree {
 	struct window_tree *parent;
 };
 
-struct window_tree *window_tree_get_window_under(struct window_tree *list, int x, int y);
+bool contains(struct rect bounds, int x, int y);
+int clamp(int v, int min, int max);
+struct window_tree *geom_get_window_under(struct window_tree *list, int x, int y);
+struct output *geom_get_output_under(struct output_list *list, int x, int y);
+void geom_free_output_list(struct output_list *list);
+void geom_free_window_tree(struct window_tree *tree);
+void geom_clip_to_parent(struct window_tree *node);
 
 #endif

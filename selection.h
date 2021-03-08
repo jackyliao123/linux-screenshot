@@ -2,24 +2,46 @@
 #define SELECTION_H
 
 #include <gtk/gtk.h>
+#include <stdbool.h>
+#include "geometry.h"
 
 struct overlay;
 
-enum selection_status {
-    SELECTION_STATUS_NONE = 0,
-    SELECTION_STATUS_TEMP = 1,
-    SELECTION_STATUS_AREA = 2,
-    SELECTION_STATUS_CREATE = 3,
+enum drag_status {
+    DRAG_STATUS_NONE              = 0,
+    DRAG_STATUS_CREATE            = 1,
+	DRAG_STATUS_MOVE              = 2,
+	DRAG_STATUS_MOVE_LEFT         = DRAG_STATUS_MOVE + 1,
+	DRAG_STATUS_MOVE_RIGHT        = DRAG_STATUS_MOVE + 2,
+	DRAG_STATUS_MOVE_TOP          = DRAG_STATUS_MOVE + 3,
+	DRAG_STATUS_MOVE_TOP_LEFT     = DRAG_STATUS_MOVE + 4,
+	DRAG_STATUS_MOVE_TOP_RIGHT    = DRAG_STATUS_MOVE + 5,
+	DRAG_STATUS_MOVE_BOTTOM       = DRAG_STATUS_MOVE + 6,
+	DRAG_STATUS_MOVE_BOTTOM_LEFT  = DRAG_STATUS_MOVE + 7,
+	DRAG_STATUS_MOVE_BOTTOM_RIGHT = DRAG_STATUS_MOVE + 8,
+	NUM_DRAG_STATUS
 };
 
 struct selection {
 	GtkWidget *widget;
 
-    int x1, y1, x2, y2;
-    enum selection_status state;
     GtkWidget* bgimage;
+
+    GdkCursor *cursors[NUM_DRAG_STATUS];
+
+	bool drag_threshold_reached;
+	enum drag_status drag_status;
+	struct rect prev_selected;
+	int px, py;
+
+	bool has_selected;
+    struct rect selected;
+
+	bool has_suggested;
+	struct rect suggested;
 };
 
 struct selection *selection_init(struct overlay *overlay);
+void selection_post_init();
 
 #endif

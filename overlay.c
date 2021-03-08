@@ -8,9 +8,10 @@
 struct overlay overlay;
 
 struct overlay *
-overlay_init(struct screenshot *screenshot, struct window_tree *tree) {
+overlay_init(struct screenshot *screenshot, struct window_tree *tree, struct output_list *outputs) {
 	overlay.screenshot = screenshot;
 	overlay.tree = tree;
+	overlay.outputs = outputs;
 
 	int width = screenshot->width;
 	int height = screenshot->height;
@@ -56,7 +57,8 @@ overlay_init(struct screenshot *screenshot, struct window_tree *tree) {
 	GdkWindow *g_window = gtk_widget_get_window(overlay.window);
 	GdkDisplay *g_display = gdk_window_get_display(g_window);
 
-	gdk_window_set_cursor(g_window, gdk_cursor_new_from_name(g_display, "crosshair"));
+	overlay.gdk_window = g_window;
+	overlay.gdk_display = g_display;
 
 	gdk_window_set_override_redirect(g_window, True);
 
@@ -66,6 +68,9 @@ overlay_init(struct screenshot *screenshot, struct window_tree *tree) {
 		fprintf(stderr, "Cursor grabbing failed\n");
 		exit(-1);
 	}
+
+	selection_post_init();
+	tooltip_post_init();
 
 	return &overlay;
 }

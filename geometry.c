@@ -1,31 +1,78 @@
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include "geometry.h"
 
-static bool
-contains(struct window_tree *window, int x, int y) {
-	if(window == NULL) {
-		return false;
+int clamp(int v, int min, int max) {
+	if(v < min) {
+		return min;
+	} else if(v > max) {
+		return max;
 	}
-    return window->bounds.x <= x
-        && window->bounds.y <= y
-        && x < window->bounds.x + window->bounds.width 
-        && y < window->bounds.y + window->bounds.height;
+	return v;
+}
+
+bool
+contains(struct rect bounds, int x, int y) {
+    return bounds.x1 <= x && x < bounds.x2 && bounds.y1 <= y && y < bounds.y2;
 }
 
 struct window_tree *
-window_tree_get_window_under(struct window_tree *root, int x, int y) {
+geom_get_window_under(struct window_tree *root, int x, int y) {
     if(root == NULL) {
         return NULL;
     }
-    if(!contains(root, x, y)) {
+    if(!contains(root->bounds, x, y)) {
         return NULL;
     }
 	for(size_t i = 0; i < root->num_children; ++i) {
-        struct window_tree *under = window_tree_get_window_under(&root->children[root->num_children - i - 1], x, y);
+        struct window_tree *under = geom_get_window_under(&root->children[root->num_children - i - 1], x, y);
         if(under) {
             return under;
         }
 	}
 	return root;
+}
+
+struct output *
+geom_get_output_under(struct output_list *list, int x, int y) {
+	if(list == NULL) {
+		return NULL;
+	}
+	for(size_t i = 0; i < list->num_output; ++i) {
+		if(contains(list->outputs[i].bounds, x, y)) {
+			return &list->outputs[i];
+		}
+	}
+	return NULL;
+}
+
+void
+geom_free_output_list(struct output_list *list) {
+	for(size_t i = 0; i < list->num_output; ++i) {
+		free(list->outputs[i].name);
+	}
+	free(list->outputs);
+}
+void
+geom_free_window_tree(struct window_tree *tree) {
+	if(!tree) {
+		return;
+	}
+	for(size_t i = 0; i < tree->num_children; ++i) {
+		geom_free_window_tree(&tree->children[i]);
+	}
+	free(tree->name);
+	free(tree->children);
+	free(tree);
+}
+
+void
+geom_clip_to_parent(struct window_tree *node) {
+	if(node->parent != NULL) {
+		node->bounds.x1 = clamp(node->bounds.x1, node->parent->bounds.x1, node->parent->bounds.x2);
+		node->bounds.y1 = clamp(node->bounds.y1, node->parent->bounds.y1, node->parent->bounds.y2);
+		node->bounds.x2 = clamp(node->bounds.x2, node->parent->bounds.x1, node->parent->bounds.x2);
+		node->bounds.y2 = clamp(node->bounds.y2, node->parent->bounds.y1, node->parent->bounds.y2);
+	}
 }

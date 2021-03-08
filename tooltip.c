@@ -165,8 +165,6 @@ tooltip_init(struct overlay *o) {
 	gtk_widget_set_margin_top(zoom, 10);
 	gtk_widget_set_margin_start(zoom, 10);
 	gtk_widget_set_margin_end(zoom, 10);
-	g_signal_connect(zoom, "size-allocate", G_CALLBACK(get_canvas_size), NULL);
-	g_signal_connect(zoom, "draw", G_CALLBACK(draw_tooltip), NULL);
 
 	gtk_box_pack_start(GTK_BOX(box), zoom, TRUE, TRUE, 0);
 
@@ -200,14 +198,20 @@ tooltip_init(struct overlay *o) {
 	GtkWidget *fixed = gtk_fixed_new();
 	gtk_fixed_put(GTK_FIXED(fixed), box, 0, 0);
 
-	g_signal_connect(overlay->window, "scroll-event", G_CALLBACK(event_scroll), NULL);
-	g_signal_connect(overlay->window, "motion-notify-event", G_CALLBACK(event_mouse_move), NULL);
-
 	tooltip.widget = fixed;
     tooltip.fixed = fixed;
     tooltip.popup = box;
     tooltip.zoom_amount = 1;
+    tooltip.zoom = zoom;
 
     return &tooltip;
+}
+
+void
+tooltip_post_init() {
+	g_signal_connect(tooltip.zoom, "size-allocate", G_CALLBACK(get_canvas_size), NULL);
+	g_signal_connect(tooltip.zoom, "draw", G_CALLBACK(draw_tooltip), NULL);
+	g_signal_connect(overlay->window, "scroll-event", G_CALLBACK(event_scroll), NULL);
+	g_signal_connect(overlay->window, "motion-notify-event", G_CALLBACK(event_mouse_move), NULL);
 }
 

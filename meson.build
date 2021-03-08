@@ -13,6 +13,7 @@ m_dep = cc.find_library('m', required : false)
 gtk_dep = dependency('gtk+-3.0')
 X11_dep = dependency('X11')
 Xext_dep = dependency('xext')
+Xrandr_dep = dependency('xrandr')
 
 src_files = files(
   'main.c',
@@ -30,6 +31,7 @@ executable(
     gtk_dep,
     X11_dep,
     Xext_dep,
+    Xrandr_dep,
     m_dep,
   ],
   install: true,

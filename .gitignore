@@ -1,3 +1,5 @@
 screenshot
 .idea/
 .vscode/
+CMakeLists.txt
+cmake-build-debug/
