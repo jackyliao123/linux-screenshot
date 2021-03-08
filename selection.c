@@ -23,6 +23,21 @@ draw_bg(GtkWidget *widget, cairo_t *cr, gpointer data) {
 		cairo_paint(cr);
 	}
 
+	cairo_set_source_rgba(cr, 0, 1, 0, 0.6);
+	if(selection.has_suggested && (!selection.has_selected || selection.modifier_mask & MODIFIER_MASK_ADD_SELECTION)) {
+		struct rect draw_bounds = selection.suggested;
+		if(selection.has_selected) {
+			draw_bounds = geom_union(&draw_bounds, &selection.selected);
+		}
+		cairo_rectangle(cr,
+		                draw_bounds.x1,
+		                draw_bounds.y1,
+		                draw_bounds.x2 - draw_bounds.x1,
+		                draw_bounds.y2 - draw_bounds.y1);
+		cairo_clip(cr);
+		cairo_paint(cr);
+	}
+
 	return False;
 }
 
@@ -103,7 +118,7 @@ event_mouse_move(GtkWidget *widget, GdkEventMotion *event) {
 	if(selection.drag_status == DRAG_STATUS_NONE) {
 		compute_drag_status();
 	} else if(selection.drag_status == DRAG_STATUS_CREATE) {
-		if(abs(dx) > selection.drag_threshold || abs(dy) > selection.drag_threshold) {
+		if((abs(dx) > selection.drag_threshold || abs(dy) > selection.drag_threshold) && !selection.has_selected) {
 			selection.drag_threshold_reached = true;
 		}
 		if(selection.drag_threshold_reached) {
@@ -142,8 +157,6 @@ event_mouse_press_release(GtkWidget *widget, GdkEventButton *event) {
 	int mouse_x = selection.mouse_x = clamp(event->x, 0, xmax - 1);
 	int mouse_y = selection.mouse_y = clamp(event->y, 0, ymax - 1);
 
-
-
 	if(event->button == 1) {
 		if(event->type == GDK_BUTTON_PRESS) {
 			selection.drag_status = compute_drag_status();
@@ -151,11 +164,25 @@ event_mouse_press_release(GtkWidget *widget, GdkEventButton *event) {
 			selection.px = mouse_x;
 			selection.py = mouse_y;
 			selection.prev_selected = selection.selected;
+			if(selection.drag_status == DRAG_STATUS_CREATE && selection.has_suggested && selection.modifier_mask & MODIFIER_MASK_ADD_SELECTION) {
+				if(selection.has_selected) {
+					selection.selected = geom_union(&selection.selected, &selection.suggested);
+				} else {
+					selection.has_selected = true;
+					selection.selected = selection.suggested;
+				}
+				selection.drag_status = DRAG_STATUS_NONE;
+			}
 		} else if(event->type == GDK_BUTTON_RELEASE) {
+			if(selection.drag_status == DRAG_STATUS_CREATE && !selection.has_selected) {
+				selection.has_selected = true;
+				selection.selected = selection.suggested;
+			}
 			selection.drag_status = DRAG_STATUS_NONE;
 			compute_drag_status();
 		}
 	}
+	gtk_widget_queue_draw(selection.bgimage);
 	return False;
 }
 

@@ -13,9 +13,30 @@ clamp(int v, int min, int max) {
 	return v;
 }
 
+int
+min(int a, int b) {
+	return a < b ? a : b;
+}
+
+int
+max(int a, int b) {
+	return a > b ? a : b;
+}
+
 bool
 contains(struct rect bounds, int x, int y) {
-    return bounds.x1 <= x && x < bounds.x2 && bounds.y1 <= y && y < bounds.y2;
+	return bounds.x1 <= x && x < bounds.x2 && bounds.y1 <= y && y < bounds.y2;
+}
+
+struct rect
+geom_union(const struct rect *r1, const struct rect *r2) {
+	struct rect res = {
+			.x1 = min(r1->x1, r2->x1),
+			.y1 = min(r1->y1, r2->y1),
+			.x2 = max(r1->x2, r2->x2),
+			.y2 = max(r1->y2, r2->y2),
+	};
+	return res;
 }
 
 struct window_tree *
