@@ -3,7 +3,8 @@
 
 #include "geometry.h"
 
-int clamp(int v, int min, int max) {
+int
+clamp(int v, int min, int max) {
 	if(v < min) {
 		return min;
 	} else if(v > max) {

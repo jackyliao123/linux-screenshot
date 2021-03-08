@@ -12,6 +12,6 @@ struct display_X11 {
 	Window root;
 };
 
-struct display_X11 *display_X11_create();
+struct display_X11 *display_X11_create(void);
 
 #endif

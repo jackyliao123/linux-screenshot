@@ -20,6 +20,6 @@ struct tooltip {
 };
 
 struct tooltip *tooltip_init(struct overlay *overlay);
-void tooltip_post_init();
+void tooltip_post_init(void);
 
 #endif

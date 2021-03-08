@@ -117,7 +117,7 @@ img_destroy:
 }
 
 static struct window_tree *
-get_windows() {
+get_windows(void) {
 	struct window_tree *root_node = calloc(sizeof(struct window_tree), 1);
 	fill_node_from_window(display.root, root_node);
 	return root_node;
@@ -168,7 +168,7 @@ static const struct display_impl display_impl = {
 };
 
 struct display_X11 *
-display_X11_create() {
+display_X11_create(void) {
 	display.impl = &display_impl;
 
 	display.display = XOpenDisplay(NULL);

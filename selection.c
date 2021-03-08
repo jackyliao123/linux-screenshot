@@ -27,16 +27,16 @@ draw_bg(GtkWidget *widget, cairo_t *cr, gpointer data) {
 }
 
 static void
-update_suggested(int x, int y, GdkModifierType mask) {
+update_suggested(void) {
 	selection.has_suggested = false;
-	if(mask & GDK_CONTROL_MASK) {
-		struct output *output = geom_get_output_under(overlay->outputs, x, y);
+	if(selection.modifier_mask & MODIFIER_MASK_SELECT_OUTPUT) {
+		struct output *output = geom_get_output_under(overlay->outputs, selection.mouse_x, selection.mouse_y);
 		if(output) {
 			selection.suggested = output->bounds;
 			selection.has_suggested = true;
 		}
 	} else {
-		struct window_tree *window = geom_get_window_under(overlay->tree, x, y);
+		struct window_tree *window = geom_get_window_under(overlay->tree, selection.mouse_x, selection.mouse_y);
 		if(window) {
 			selection.suggested = window->bounds;
 			selection.has_suggested = true;
@@ -45,9 +45,9 @@ update_suggested(int x, int y, GdkModifierType mask) {
 }
 
 static enum drag_status
-compute_drag_status(int x, int y, GdkModifierType mask) {
+compute_drag_status(void) {
 	enum drag_status status;
-	if(!selection.has_selected || selection.drag_status == DRAG_STATUS_CREATE || mask & GDK_SHIFT_MASK) {
+	if(!selection.has_selected || selection.drag_status == DRAG_STATUS_CREATE || selection.modifier_mask & MODIFIER_MASK_ADD_SELECTION) {
 		status = DRAG_STATUS_CREATE;
 		goto done;
 	}
@@ -60,19 +60,19 @@ compute_drag_status(int x, int y, GdkModifierType mask) {
 	expanded.y1 -= edge_threshold;
 	expanded.x2 += edge_threshold;
 	expanded.y2 += edge_threshold;
-	if(!contains(expanded, x, y)) {
+	if(!contains(expanded, selection.mouse_x, selection.mouse_y)) {
 		status = DRAG_STATUS_NONE;
 		goto done;
 	}
 
-	if(mask & GDK_MOD1_MASK) {
+	if(selection.modifier_mask & MODIFIER_MASK_RESIZE_CORNER) {
 		edge_threshold = INT_MAX;
 	}
 
-	int dx1 = abs(selection.selected.x1 - x);
-	int dx2 = abs(selection.selected.x2 - x);
-	int dy1 = abs(selection.selected.y1 - y);
-	int dy2 = abs(selection.selected.y2 - y);
+	int dx1 = abs(selection.selected.x1 - selection.mouse_x);
+	int dx2 = abs(selection.selected.x2 - selection.mouse_x);
+	int dy1 = abs(selection.selected.y1 - selection.mouse_y);
+	int dy2 = abs(selection.selected.y2 - selection.mouse_y);
 	if(dx1 <= edge_threshold || dx2 <= edge_threshold) {
 		x_dir = dx1 <= dx2 ? 1 : 2;
 	}
@@ -83,6 +83,7 @@ compute_drag_status(int x, int y, GdkModifierType mask) {
 	goto done;
 
 done:
+	selection.preview_drag_status = status;
 	gdk_window_set_cursor(overlay->gdk_window, selection.cursors[status]);
 	return status;
 }
@@ -94,13 +95,13 @@ event_mouse_move(GtkWidget *widget, GdkEventMotion *event) {
 	int mouse_x = selection.mouse_x = clamp(event->x, 0, xmax - 1);
 	int mouse_y = selection.mouse_y = clamp(event->y, 0, ymax - 1);
 
-	update_suggested(mouse_x, mouse_y, event->state);
+	update_suggested();
 
 	int dx = mouse_x - selection.px;
 	int dy = mouse_y - selection.py;
 
 	if(selection.drag_status == DRAG_STATUS_NONE) {
-		compute_drag_status(mouse_x, mouse_y, event->state);
+		compute_drag_status();
 	} else if(selection.drag_status == DRAG_STATUS_CREATE) {
 		if(abs(dx) > selection.drag_threshold || abs(dy) > selection.drag_threshold) {
 			selection.drag_threshold_reached = true;
@@ -135,55 +136,55 @@ event_mouse_move(GtkWidget *widget, GdkEventMotion *event) {
 }
 
 static gboolean
-event_mouse_press(GtkWidget *widget, GdkEventButton *event) {
+event_mouse_press_release(GtkWidget *widget, GdkEventButton *event) {
 	int xmax = overlay->screenshot->width;
 	int ymax = overlay->screenshot->height;
 	int mouse_x = selection.mouse_x = clamp(event->x, 0, xmax - 1);
 	int mouse_y = selection.mouse_y = clamp(event->y, 0, ymax - 1);
 
-	if(event->button == 1) {
-		selection.drag_status = compute_drag_status(mouse_x, mouse_y, event->state);
-		selection.drag_threshold_reached = false;
-		selection.px = mouse_x;
-		selection.py = mouse_y;
-		selection.prev_selected = selection.selected;
-	}
-	return False;
-}
 
-static gboolean
-event_mouse_release(GtkWidget *widget, GdkEventButton *event) {
-	int xmax = overlay->screenshot->width;
-	int ymax = overlay->screenshot->height;
-	int mouse_x = selection.mouse_x = clamp(event->x, 0, xmax - 1);
-	int mouse_y = selection.mouse_y = clamp(event->y, 0, ymax - 1);
 
 	if(event->button == 1) {
-		selection.drag_status = DRAG_STATUS_NONE;
-		compute_drag_status(mouse_x, mouse_y, event->state);
-	}
-	return False;
-}
-
-static gboolean
-event_key_press(GtkWidget *widget, GdkEventKey *event) {
-	update_suggested(selection.mouse_x, selection.mouse_y, event->state);
-	compute_drag_status(selection.mouse_x, selection.mouse_y, event->state);
-	if(event->keyval == GDK_KEY_Escape) {
-		if(selection.has_selected) {
-			selection.has_selected = false;
-		} else {
-			exit(0);
+		if(event->type == GDK_BUTTON_PRESS) {
+			selection.drag_status = compute_drag_status();
+			selection.drag_threshold_reached = false;
+			selection.px = mouse_x;
+			selection.py = mouse_y;
+			selection.prev_selected = selection.selected;
+		} else if(event->type == GDK_BUTTON_RELEASE) {
+			selection.drag_status = DRAG_STATUS_NONE;
+			compute_drag_status();
 		}
 	}
-	gtk_widget_queue_draw(selection.bgimage);
 	return False;
 }
 
 static gboolean
-event_key_release(GtkWidget *widget, GdkEventKey *event) {
-	update_suggested(selection.mouse_x, selection.mouse_y, event->state);
-	compute_drag_status(selection.mouse_x, selection.mouse_y, event->state);
+event_key_press_release(GtkWidget *widget, GdkEventKey *event) {
+	for(size_t i = 0; i < NUM_MODIFIER_KEY; ++i) {
+		if(gdk_keyval_to_lower(event->keyval) == selection.modifier_codes[i]) {
+			if(event->type == GDK_KEY_PRESS) {
+				selection.modifier_mask |= 1 << i;
+			} else if(event->type == GDK_KEY_RELEASE) {
+				selection.modifier_mask &= ~(1 << i);
+			}
+		}
+	}
+
+	if(selection.drag_status == DRAG_STATUS_NONE) {
+		update_suggested();
+		compute_drag_status();
+	}
+
+	if(event->type == GDK_KEY_PRESS) {
+		if(event->keyval == GDK_KEY_Escape) {
+			if(selection.has_selected) {
+				selection.has_selected = false;
+			} else {
+				exit(0);
+			}
+		}
+	}
 	gtk_widget_queue_draw(selection.bgimage);
 	return False;
 }
@@ -201,7 +202,7 @@ selection_init(struct overlay *o) {
 }
 
 void
-selection_post_init() {
+selection_post_init(void) {
 	char *cursor_names[NUM_DRAG_STATUS] = {
 			"default", "crosshair",
 			"move", "w-resize", "e-resize",
@@ -213,10 +214,14 @@ selection_post_init() {
 		selection.cursors[i] = gdk_cursor_new_from_name(overlay->gdk_display, cursor_names[i]);
 	}
 
-	g_signal_connect(overlay->window, "button-press-event", G_CALLBACK(event_mouse_press), NULL);
-	g_signal_connect(overlay->window, "button-release-event", G_CALLBACK(event_mouse_release), NULL);
-	g_signal_connect(overlay->window, "key-press-event", G_CALLBACK(event_key_press), NULL);
-	g_signal_connect(overlay->window, "key-release-event", G_CALLBACK(event_key_release), NULL);
+	selection.modifier_codes[MODIFIER_KEY_ADD_SELECTION] = GDK_KEY_Shift_L;
+	selection.modifier_codes[MODIFIER_KEY_SELECT_OUTPUT] = GDK_KEY_Control_L;
+	selection.modifier_codes[MODIFIER_KEY_RESIZE_CORNER] = GDK_KEY_Alt_L;
+
+	g_signal_connect(overlay->window, "button-press-event", G_CALLBACK(event_mouse_press_release), NULL);
+	g_signal_connect(overlay->window, "button-release-event", G_CALLBACK(event_mouse_press_release), NULL);
 	g_signal_connect(overlay->window, "motion-notify-event", G_CALLBACK(event_mouse_move), NULL);
+	g_signal_connect(overlay->window, "key-press-event", G_CALLBACK(event_key_press_release), NULL);
+	g_signal_connect(overlay->window, "key-release-event", G_CALLBACK(event_key_press_release), NULL);
 	g_signal_connect(selection.bgimage, "draw", G_CALLBACK(draw_bg), NULL);
 }

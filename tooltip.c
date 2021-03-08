@@ -34,7 +34,7 @@ get_pixel(int x, int y) {
 }
 
 static void
-update_text() {
+update_text(void) {
 	char buf[1024];
 	for(int ind = 0; ind < tooltip.label_cnt; ++ind) {
 		buf[0] = '\0';
@@ -208,7 +208,7 @@ tooltip_init(struct overlay *o) {
 }
 
 void
-tooltip_post_init() {
+tooltip_post_init(void) {
 	g_signal_connect(tooltip.zoom, "size-allocate", G_CALLBACK(get_canvas_size), NULL);
 	g_signal_connect(tooltip.zoom, "draw", G_CALLBACK(draw_tooltip), NULL);
 	g_signal_connect(overlay->window, "scroll-event", G_CALLBACK(event_scroll), NULL);
