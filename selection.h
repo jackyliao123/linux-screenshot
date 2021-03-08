@@ -29,10 +29,14 @@ struct selection {
 
     GdkCursor *cursors[NUM_DRAG_STATUS];
 
+    int drag_threshold;
+    int edge_threshold;
+
 	bool drag_threshold_reached;
 	enum drag_status drag_status;
 	struct rect prev_selected;
 	int px, py;
+	int mouse_x, mouse_y;
 
 	bool has_selected;
     struct rect selected;

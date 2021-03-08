@@ -11,21 +11,17 @@ draw_bg(GtkWidget *widget, cairo_t *cr, gpointer data) {
 	cairo_paint(cr);
 
 	cairo_set_source_rgba(cr, 0, 0, 0, 0.6);
-//	if(selection.state != SELECTION_STATUS_NONE) {
-//		int x = MIN(selection.x1, selection.x2);
-//		int y = MIN(selection.y1, selection.y2);
-//		int width = ABS(selection.x1 - selection.x2) + 1;
-//		int height = ABS(selection.y1 - selection.y2) + 1;
+	if(selection.has_selected) {
 		cairo_rectangle(cr, 0, 0, overlay->screenshot->width, overlay->screenshot->height);
-//		cairo_rectangle(cr, x, y + height, width, -height);
+
 		cairo_rectangle(cr,
 				  selection.selected.x1,
 				  selection.selected.y2,
 				  selection.selected.x2 - selection.selected.x1,
 				  selection.selected.y1 - selection.selected.y2);
 		cairo_clip(cr);
-//	}
-	cairo_paint(cr);
+		cairo_paint(cr);
+	}
 
 	return False;
 }
@@ -50,10 +46,12 @@ update_suggested(int x, int y, GdkModifierType mask) {
 
 static enum drag_status
 compute_drag_status(int x, int y, GdkModifierType mask) {
-	if(!selection.has_selected || mask & GDK_SHIFT_MASK) {
-		return DRAG_STATUS_CREATE;
+	enum drag_status status;
+	if(!selection.has_selected || selection.drag_status == DRAG_STATUS_CREATE || mask & GDK_SHIFT_MASK) {
+		status = DRAG_STATUS_CREATE;
+		goto done;
 	}
-	int edge_threshold = 10;
+	int edge_threshold = selection.edge_threshold;
 	int x_dir = 0;
 	int y_dir = 0;
 
@@ -63,7 +61,8 @@ compute_drag_status(int x, int y, GdkModifierType mask) {
 	expanded.x2 += edge_threshold;
 	expanded.y2 += edge_threshold;
 	if(!contains(expanded, x, y)) {
-		return DRAG_STATUS_NONE;
+		status = DRAG_STATUS_NONE;
+		goto done;
 	}
 
 	if(mask & GDK_MOD1_MASK) {
@@ -80,33 +79,39 @@ compute_drag_status(int x, int y, GdkModifierType mask) {
 	if(dy1 <= edge_threshold || dy2 <= edge_threshold) {
 		y_dir = dy1 <= dy2 ? 1 : 2;
 	}
-	return DRAG_STATUS_MOVE + y_dir * 3 + x_dir;
+	status = DRAG_STATUS_MOVE + y_dir * 3 + x_dir;
+	goto done;
+
+done:
+	gdk_window_set_cursor(overlay->gdk_window, selection.cursors[status]);
+	return status;
 }
 
 static gboolean
 event_mouse_move(GtkWidget *widget, GdkEventMotion *event) {
-	GdkModifierType mask;
-	gdk_window_get_device_position(event->window, event->device, NULL, NULL, &mask);
-
 	int xmax = overlay->screenshot->width;
 	int ymax = overlay->screenshot->height;
-    int mouse_x = clamp(event->x, 0, xmax - 1);
-    int mouse_y = clamp(event->y, 0, ymax - 1);
+	int mouse_x = selection.mouse_x = clamp(event->x, 0, xmax - 1);
+	int mouse_y = selection.mouse_y = clamp(event->y, 0, ymax - 1);
 
-	update_suggested(mouse_x, mouse_y, mask);
+	update_suggested(mouse_x, mouse_y, event->state);
 
 	int dx = mouse_x - selection.px;
 	int dy = mouse_y - selection.py;
 
 	if(selection.drag_status == DRAG_STATUS_NONE) {
-		enum drag_status status = compute_drag_status(mouse_x, mouse_y, mask);
-		gdk_window_set_device_cursor(event->window, event->device, selection.cursors[status]);
+		compute_drag_status(mouse_x, mouse_y, event->state);
 	} else if(selection.drag_status == DRAG_STATUS_CREATE) {
-		selection.has_selected = true;
-		selection.selected.x1 = MIN(selection.px, mouse_x);
-		selection.selected.y1 = MIN(selection.py, mouse_y);
-		selection.selected.x2 = MAX(selection.px, mouse_x) + 1;
-		selection.selected.y2 = MAX(selection.py, mouse_y) + 1;
+		if(abs(dx) > selection.drag_threshold || abs(dy) > selection.drag_threshold) {
+			selection.drag_threshold_reached = true;
+		}
+		if(selection.drag_threshold_reached) {
+			selection.has_selected = true;
+			selection.selected.x1 = MIN(selection.px, mouse_x);
+			selection.selected.y1 = MIN(selection.py, mouse_y);
+			selection.selected.x2 = MAX(selection.px, mouse_x) + 1;
+			selection.selected.y2 = MAX(selection.py, mouse_y) + 1;
+		}
 	} else if(selection.drag_status == DRAG_STATUS_MOVE) {
 		selection.selected.x1 = clamp(selection.prev_selected.x1 + dx, 0, xmax - selection.prev_selected.x2 + selection.prev_selected.x1);
 		selection.selected.y1 = clamp(selection.prev_selected.y1 + dy, 0, ymax - selection.prev_selected.y2 + selection.prev_selected.y1);
@@ -126,54 +131,19 @@ event_mouse_move(GtkWidget *widget, GdkEventMotion *event) {
 			selection.selected.y2 = clamp(selection.prev_selected.y2 + dy, selection.prev_selected.y1 + 1, ymax);
 		}
 	}
-
-
-
-//	selection.has_selected = true;
-//	selection.selected.x = 100;
-//	selection.selected.y = 500;
-//	selection.selected.width = 1000;
-//	selection.selected.height = 700;
-
-//	if(event->state & GDK_BUTTON1_MASK && selection.state == SELECTION_STATUS_TEMP) {
-//		selection.x1 = mouse_x;
-//		selection.y1 = mouse_y;
-//		selection.state = SELECTION_STATUS_CREATE;
-//	}
-//
-//	if(selection.state == SELECTION_STATUS_CREATE) {
-//		selection.x2 = mouse_x;
-//		selection.y2 = mouse_y;
-//	}
-//
-//	if(selection.state == SELECTION_STATUS_NONE || selection.state == SELECTION_STATUS_TEMP) {
-//		if(selection.has_suggested) {
-//			selection.state = SELECTION_STATUS_TEMP;
-//			selection.x1 = selection.suggested.x;
-//			selection.y1 = selection.suggested.y;
-//			selection.x2 = selection.x1 + selection.suggested.width - 1;
-//			selection.y2 = selection.y1 + selection.suggested.height - 1;
-//		} else {
-//			selection.state = SELECTION_STATUS_NONE;
-//		}
-//	}
-
 	return False;
 }
 
 static gboolean
 event_mouse_press(GtkWidget *widget, GdkEventButton *event) {
-	GdkModifierType mask;
-	gdk_window_get_device_position(event->window, event->device, NULL, NULL, &mask);
-
 	int xmax = overlay->screenshot->width;
 	int ymax = overlay->screenshot->height;
-	int mouse_x = clamp(event->x, 0, xmax - 1);
-	int mouse_y = clamp(event->y, 0, ymax - 1);
+	int mouse_x = selection.mouse_x = clamp(event->x, 0, xmax - 1);
+	int mouse_y = selection.mouse_y = clamp(event->y, 0, ymax - 1);
 
 	if(event->button == 1) {
-		selection.drag_status = compute_drag_status(mouse_x, mouse_y, mask);
-		gdk_window_set_device_cursor(event->window, event->device, selection.cursors[selection.drag_status]);
+		selection.drag_status = compute_drag_status(mouse_x, mouse_y, event->state);
+		selection.drag_threshold_reached = false;
 		selection.px = mouse_x;
 		selection.py = mouse_y;
 		selection.prev_selected = selection.selected;
@@ -183,42 +153,37 @@ event_mouse_press(GtkWidget *widget, GdkEventButton *event) {
 
 static gboolean
 event_mouse_release(GtkWidget *widget, GdkEventButton *event) {
-	GdkModifierType mask;
-	gdk_window_get_device_position(event->window, event->device, NULL, NULL, &mask);
-
 	int xmax = overlay->screenshot->width;
 	int ymax = overlay->screenshot->height;
-	int mouse_x = clamp(event->x, 0, xmax - 1);
-	int mouse_y = clamp(event->y, 0, ymax - 1);
+	int mouse_x = selection.mouse_x = clamp(event->x, 0, xmax - 1);
+	int mouse_y = selection.mouse_y = clamp(event->y, 0, ymax - 1);
 
 	if(event->button == 1) {
 		selection.drag_status = DRAG_STATUS_NONE;
-		gdk_window_set_device_cursor(event->window, event->device, selection.cursors[selection.drag_status]);
+		compute_drag_status(mouse_x, mouse_y, event->state);
 	}
-
-//	if(selection.state == SELECTION_STATUS_CREATE) {
-//		selection.x2 = event->x;
-//		selection.y2 = event->y;
-//		selection.state = SELECTION_STATUS_AREA;
-//	} else if(selection.state == SELECTION_STATUS_TEMP) {
-//		selection.state = SELECTION_STATUS_AREA;
-//	}
 	return False;
 }
 
-
 static gboolean
 event_key_press(GtkWidget *widget, GdkEventKey *event) {
-	printf("Key down\n");
-	guint16 code = event->hardware_keycode;
-	if(code == 9) {
-//		if(selection.state == SELECTION_STATUS_TEMP || selection.state == SELECTION_STATUS_NONE) {
+	update_suggested(selection.mouse_x, selection.mouse_y, event->state);
+	compute_drag_status(selection.mouse_x, selection.mouse_y, event->state);
+	if(event->keyval == GDK_KEY_Escape) {
+		if(selection.has_selected) {
+			selection.has_selected = false;
+		} else {
 			exit(0);
-//		} else {
-//			selection.state = SELECTION_STATUS_NONE;
-//		}
+		}
 	}
-	printf("%d\n", event->hardware_keycode);
+	gtk_widget_queue_draw(selection.bgimage);
+	return False;
+}
+
+static gboolean
+event_key_release(GtkWidget *widget, GdkEventKey *event) {
+	update_suggested(selection.mouse_x, selection.mouse_y, event->state);
+	compute_drag_status(selection.mouse_x, selection.mouse_y, event->state);
 	gtk_widget_queue_draw(selection.bgimage);
 	return False;
 }
@@ -229,6 +194,8 @@ selection_init(struct overlay *o) {
 
 	selection.bgimage = gtk_drawing_area_new();
 
+	selection.edge_threshold = 10;
+	selection.drag_threshold = 10;
 	selection.widget = selection.bgimage;
     return &selection;
 }
@@ -249,6 +216,7 @@ selection_post_init() {
 	g_signal_connect(overlay->window, "button-press-event", G_CALLBACK(event_mouse_press), NULL);
 	g_signal_connect(overlay->window, "button-release-event", G_CALLBACK(event_mouse_release), NULL);
 	g_signal_connect(overlay->window, "key-press-event", G_CALLBACK(event_key_press), NULL);
+	g_signal_connect(overlay->window, "key-release-event", G_CALLBACK(event_key_release), NULL);
 	g_signal_connect(overlay->window, "motion-notify-event", G_CALLBACK(event_mouse_move), NULL);
 	g_signal_connect(selection.bgimage, "draw", G_CALLBACK(draw_bg), NULL);
 }
