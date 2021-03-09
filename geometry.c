@@ -24,8 +24,8 @@ max(int a, int b) {
 }
 
 bool
-contains(struct rect bounds, int x, int y) {
-	return bounds.x1 <= x && x < bounds.x2 && bounds.y1 <= y && y < bounds.y2;
+contains(const struct rect *bounds, int x, int y) {
+	return bounds->x1 <= x && x < bounds->x2 && bounds->y1 <= y && y < bounds->y2;
 }
 
 struct rect
@@ -39,12 +39,23 @@ geom_union(const struct rect *r1, const struct rect *r2) {
 	return res;
 }
 
+struct rect
+geom_expand(const struct rect *bounds, int amount) {
+	struct rect res = {
+			.x1 = bounds->x1 - amount,
+			.y1 = bounds->y1 - amount,
+			.x2 = bounds->x2 + amount,
+			.y2 = bounds->y2 + amount,
+	};
+	return res;
+}
+
 struct window_tree *
 geom_get_window_under(struct window_tree *root, int x, int y) {
     if(root == NULL) {
         return NULL;
     }
-    if(!contains(root->bounds, x, y)) {
+    if(!contains(&root->bounds, x, y)) {
         return NULL;
     }
 	for(size_t i = 0; i < root->num_children; ++i) {
@@ -56,13 +67,24 @@ geom_get_window_under(struct window_tree *root, int x, int y) {
 	return root;
 }
 
+struct window_tree *
+geom_get_window_parent_under(struct window_tree *root, int x, int y, size_t nth_parent) {
+	struct window_tree *window = geom_get_window_under(root, x, y);
+	for(size_t i = 0; i < nth_parent; ++i) {
+		if(window != NULL) {
+			window = window->parent;
+		}
+	}
+	return window;
+}
+
 struct output *
 geom_get_output_under(struct output_list *list, int x, int y) {
 	if(list == NULL) {
 		return NULL;
 	}
 	for(size_t i = 0; i < list->num_output; ++i) {
-		if(contains(list->outputs[i].bounds, x, y)) {
+		if(contains(&list->outputs[i].bounds, x, y)) {
 			return &list->outputs[i];
 		}
 	}

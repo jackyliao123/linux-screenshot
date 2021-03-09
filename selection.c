@@ -6,12 +6,11 @@ static struct overlay *overlay;
 
 static gint
 draw_bg(GtkWidget *widget, cairo_t *cr, gpointer data) {
-	cairo_set_source_surface(cr, overlay->screenshot_surface, 0, 0);
-	cairo_pattern_set_filter(cairo_get_source(cr), CAIRO_FILTER_NEAREST);
-	cairo_paint(cr);
-
 	cairo_set_source_rgba(cr, 0, 0, 0, 0.6);
+	int stroke_half = 3;
+
 	if(selection.has_selected) {
+		cairo_set_line_width(cr, stroke_half * 2);
 		cairo_rectangle(cr, 0, 0, overlay->screenshot->width, overlay->screenshot->height);
 
 		cairo_rectangle(cr,
@@ -21,21 +20,40 @@ draw_bg(GtkWidget *widget, cairo_t *cr, gpointer data) {
 				  selection.selected.y1 - selection.selected.y2);
 		cairo_clip(cr);
 		cairo_paint(cr);
-	}
 
-	cairo_set_source_rgba(cr, 0, 1, 0, 0.6);
-	if(selection.has_suggested && (!selection.has_selected || selection.modifier_mask & MODIFIER_MASK_ADD_SELECTION)) {
-		struct rect draw_bounds = selection.suggested;
-		if(selection.has_selected) {
-			draw_bounds = geom_union(&draw_bounds, &selection.selected);
-		}
+		struct rect draw_bounds = geom_expand(&selection.selected, stroke_half);
+
+		cairo_set_source_rgba(cr, 1, 0.5, 0, 0.5);
 		cairo_rectangle(cr,
 		                draw_bounds.x1,
 		                draw_bounds.y1,
 		                draw_bounds.x2 - draw_bounds.x1,
 		                draw_bounds.y2 - draw_bounds.y1);
-		cairo_clip(cr);
-		cairo_paint(cr);
+		cairo_stroke(cr);
+	}
+
+	if(selection.has_suggested && (!selection.has_selected || selection.modifier_mask & MODIFIER_MASK_ADD_SELECTION)) {
+		cairo_set_line_width(cr, stroke_half * 2);
+		struct rect draw_bounds = selection.suggested;
+		if(selection.has_selected) {
+			draw_bounds = geom_union(&draw_bounds, &selection.selected);
+		}
+		cairo_set_source_rgba(cr, 0, 0.5, 0.7, 0.1);
+		cairo_rectangle(cr,
+		                draw_bounds.x1,
+		                draw_bounds.y1,
+		                draw_bounds.x2 - draw_bounds.x1,
+		                draw_bounds.y2 - draw_bounds.y1);
+		cairo_fill(cr);
+
+		draw_bounds = geom_expand(&draw_bounds, stroke_half);
+		cairo_set_source_rgba(cr, 0, 0.5, 1, 0.5);
+		cairo_rectangle(cr,
+		                draw_bounds.x1,
+		                draw_bounds.y1,
+		                draw_bounds.x2 - draw_bounds.x1,
+		                draw_bounds.y2 - draw_bounds.y1);
+		cairo_stroke(cr);
 	}
 
 	return False;
@@ -70,12 +88,8 @@ compute_drag_status(void) {
 	int x_dir = 0;
 	int y_dir = 0;
 
-	struct rect expanded = selection.selected;
-	expanded.x1 -= edge_threshold;
-	expanded.y1 -= edge_threshold;
-	expanded.x2 += edge_threshold;
-	expanded.y2 += edge_threshold;
-	if(!contains(expanded, selection.mouse_x, selection.mouse_y)) {
+	struct rect expanded = geom_expand(&selection.selected, edge_threshold);
+	if(!contains(&expanded, selection.mouse_x, selection.mouse_y)) {
 		status = DRAG_STATUS_NONE;
 		goto done;
 	}

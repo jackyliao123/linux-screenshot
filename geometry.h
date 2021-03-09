@@ -30,9 +30,11 @@ struct window_tree {
 int min(int a, int b);
 int max(int a, int b);
 int clamp(int v, int min, int max);
-bool contains(struct rect bounds, int x, int y);
+bool contains(const struct rect *bounds, int x, int y);
 struct rect geom_union(const struct rect *r1, const struct rect *r2);
+struct rect geom_expand(const struct rect *bounds, int amount);
 struct window_tree *geom_get_window_under(struct window_tree *list, int x, int y);
+struct window_tree *geom_get_window_parent_under(struct window_tree *root, int x, int y, size_t nth_parent);
 struct output *geom_get_output_under(struct output_list *list, int x, int y);
 void geom_free_output_list(struct output_list *list);
 void geom_free_window_tree(struct window_tree *tree);

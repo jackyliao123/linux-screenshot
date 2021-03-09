@@ -46,6 +46,7 @@ overlay_init(struct screenshot *screenshot, struct window_tree *tree, struct out
 	overlay.tooltip = tooltip_init(&overlay);
 
 	GtkWidget *overlay_container = gtk_overlay_new();
+	gtk_overlay_add_overlay(GTK_OVERLAY(overlay_container), gtk_image_new_from_surface(overlay.screenshot_surface));
 	gtk_overlay_add_overlay(GTK_OVERLAY(overlay_container), overlay.selection->widget);
 	gtk_overlay_add_overlay(GTK_OVERLAY(overlay_container), overlay.tooltip->widget);
 
