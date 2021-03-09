@@ -13,8 +13,8 @@ struct tooltip {
     GtkWidget *popup;
     GtkWidget *zoom;
     double zoom_amount;
-    int mouse_x;
-    int mouse_y;
+    int center_x;
+    int center_y;
     GtkWidget **labels;
     size_t label_cnt;
 };

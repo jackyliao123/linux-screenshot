@@ -7,6 +7,32 @@
 
 struct overlay overlay;
 
+static gboolean
+event_key_press(GtkWidget *widget, GdkEventKey *event) {
+	int dx = 0;
+	int dy = 0;
+	switch(event->keyval) {
+		case GDK_KEY_Left:
+			dx--;
+			break;
+		case GDK_KEY_Right:
+			dx++;
+			break;
+		case GDK_KEY_Up:
+			dy--;
+			break;
+		case GDK_KEY_Down:
+			dy++;
+			break;
+	}
+	if(dx != 0 || dy != 0) {
+		GdkScreen *screen;
+		gint x, y;
+		gdk_display_get_pointer(overlay.gdk_display, &screen, &x, &y, NULL);
+		gdk_display_warp_pointer(overlay.gdk_display, screen, x + dx, y + dy);
+	}
+}
+
 struct overlay *
 overlay_init(struct screenshot *screenshot, struct window_tree *tree, struct output_list *outputs) {
 	overlay.screenshot = screenshot;
@@ -72,6 +98,8 @@ overlay_init(struct screenshot *screenshot, struct window_tree *tree, struct out
 
 	selection_post_init();
 	tooltip_post_init();
+
+	g_signal_connect(overlay.window, "key-press-event", G_CALLBACK(event_key_press), NULL);
 
 	return &overlay;
 }

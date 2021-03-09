@@ -38,7 +38,7 @@ draw_bg(GtkWidget *widget, cairo_t *cr, gpointer data) {
 		if(selection.has_selected) {
 			draw_bounds = geom_union(&draw_bounds, &selection.selected);
 		}
-		cairo_set_source_rgba(cr, 0, 0.5, 0.7, 0.1);
+		cairo_set_source_rgba(cr, 0, 0.5, 0.7, 0.3);
 		cairo_rectangle(cr,
 		                draw_bounds.x1,
 		                draw_bounds.y1,
@@ -148,8 +148,8 @@ event_mouse_move(GtkWidget *widget, GdkEventMotion *event) {
 		selection.selected.x2 = clamp(selection.prev_selected.x2 + dx, selection.prev_selected.x2 - selection.prev_selected.x1, xmax);
 		selection.selected.y2 = clamp(selection.prev_selected.y2 + dy, selection.prev_selected.y2 - selection.prev_selected.y1, ymax);
 	} else {
-		int x_dir = (int) (selection.drag_status - DRAG_STATUS_MOVE) % 3;
-		int y_dir = (int) (selection.drag_status - DRAG_STATUS_MOVE) / 3;
+		unsigned x_dir = (selection.drag_status - DRAG_STATUS_MOVE) % 3;
+		unsigned y_dir = (selection.drag_status - DRAG_STATUS_MOVE) / 3;
 		if(x_dir == 1) {
 			selection.selected.x1 = clamp(selection.prev_selected.x1 + dx, 0, selection.prev_selected.x2 - 1);
 		} else if(x_dir == 2) {
