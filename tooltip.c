@@ -4,8 +4,7 @@
 #include "overlay.h"
 #include "selection.h"
 
-static struct tooltip tooltip;
-static struct overlay *overlay;
+struct tooltip tooltip;
 
 #define INFO_POS 0
 #define INFO_CLR 1
@@ -21,11 +20,11 @@ struct rgba {
     uint32_t r, g, b, a;
 };
 
-static struct rgba 
+static struct rgba
 get_pixel(int x, int y) {
     struct rgba clr = {};
-    if(x >= 0 && y >= 0 && x < overlay->screenshot->width && y < overlay->screenshot->height) {
-        uint32_t val = *((uint32_t *) overlay->screenshot->buf + (y * overlay->screenshot->width + x));
+    if(x >= 0 && y >= 0 && x < overlay.screenshot->width && y < overlay.screenshot->height) {
+        uint32_t val = *((uint32_t *) overlay.screenshot->buf + (y * overlay.screenshot->width + x));
         clr.r = (val >> 16) & 0xff;
         clr.g = (val >> 8) & 0xff;
         clr.b = (val >> 0) & 0xff;
@@ -76,8 +75,8 @@ draw_tooltip(GtkWidget *widget, cairo_t *cr, gpointer data) {
 	cairo_matrix_t ctm;
 	cairo_get_matrix(cr, &ctm);
 
-	int xmax = overlay->screenshot->width;
-	int ymax = overlay->screenshot->height;
+	int xmax = overlay.screenshot->width;
+	int ymax = overlay.screenshot->height;
 
 	int dx = (int) ceil(hwidth / tooltip.zoom_amount);
 	int dy = (int) ceil(hheight / tooltip.zoom_amount);
@@ -90,7 +89,7 @@ draw_tooltip(GtkWidget *widget, cairo_t *cr, gpointer data) {
 	int offset_x = tooltip.center_x - dx - x1;
 	int offset_y = tooltip.center_y - dy - y1;
 
-	cairo_surface_t *subsurface = cairo_surface_create_for_rectangle(overlay->screenshot_surface,
+	cairo_surface_t *subsurface = cairo_surface_create_for_rectangle(overlay.screenshot_surface,
 																  x1, y1, x2 - x1, y2 - y1);
 
 	cairo_scale(cr, tooltip.zoom_amount, tooltip.zoom_amount);
@@ -104,8 +103,8 @@ draw_tooltip(GtkWidget *widget, cairo_t *cr, gpointer data) {
 
 	cairo_surface_destroy(subsurface);
 
-	if(overlay->selection->has_selected) {
-		struct rect bounds = overlay->selection->selected;
+	if(selection.has_selected) {
+		struct rect bounds = selection.selected;
 
 		cairo_set_line_width(cr, 1);
 
@@ -158,28 +157,28 @@ update_mouse_position(int x, int y) {
 	tooltip.center_x = x;
 	tooltip.center_y = y;
 
-	if(overlay->selection->drag_status > DRAG_STATUS_MOVE) {
-		unsigned xdir = (overlay->selection->drag_status - DRAG_STATUS_MOVE) % 3;
-		unsigned ydir = (overlay->selection->drag_status - DRAG_STATUS_MOVE) / 3;
+	if(selection.drag_status > DRAG_STATUS_MOVE) {
+		unsigned xdir = (selection.drag_status - DRAG_STATUS_MOVE) % 3;
+		unsigned ydir = (selection.drag_status - DRAG_STATUS_MOVE) / 3;
 		if(xdir == 1) {
-			tooltip.center_x = overlay->selection->selected.x1;
+			tooltip.center_x = selection.selected.x1;
 		} else if(xdir == 2){
-			tooltip.center_x = overlay->selection->selected.x2 - 1;
+			tooltip.center_x = selection.selected.x2 - 1;
 		}
 		if(ydir == 1) {
-			tooltip.center_y = overlay->selection->selected.y1;
+			tooltip.center_y = selection.selected.y1;
 		} else if(ydir == 2){
-			tooltip.center_y = overlay->selection->selected.y2 - 1;
+			tooltip.center_y = selection.selected.y2 - 1;
 		}
 	}
 
 	struct rect bounds = {0};
-	struct output *output = geom_get_output_under(overlay->outputs, x, y);
+	struct output *output = geom_get_output_under(overlay.outputs, x, y);
 	if(output) {
 		bounds = output->bounds;
 	} else {
-		bounds.x2 = overlay->screenshot->width;
-		bounds.y2 = overlay->screenshot->height;
+		bounds.x2 = overlay.screenshot->width;
+		bounds.y2 = overlay.screenshot->height;
 	}
 
 	int place_x = x;
@@ -196,7 +195,7 @@ update_mouse_position(int x, int y) {
 	update_text();
 }
 
-static gboolean 
+static gboolean
 event_mouse_move(GtkWidget *widget, GdkEventMotion *event) {
 	update_mouse_position(event->x, event->y);
 	return False;
@@ -208,15 +207,13 @@ event_mouse_press_release(GtkWidget *widget, GdkEventButton *event) {
 	return False;
 }
 
-static void 
+static void
 get_canvas_size(GtkWidget *widget, GtkAllocation *alloc, void *data) {
 	gtk_widget_set_size_request(widget, alloc->width, alloc->width);
 }
 
-struct tooltip *
-tooltip_init(struct overlay *o) {
-    overlay = o;
-
+void
+tooltip_init() {
     // TODO maybe configurable?
     tooltip.label_cnt = 4;
     tooltip.labels = calloc(tooltip.label_cnt, sizeof(GtkLabel *));
@@ -273,17 +270,15 @@ tooltip_init(struct overlay *o) {
     tooltip.popup = box;
     tooltip.zoom_amount = 2;
     tooltip.zoom = zoom;
-
-    return &tooltip;
 }
 
 void
 tooltip_post_init(void) {
 	g_signal_connect(tooltip.zoom, "size-allocate", G_CALLBACK(get_canvas_size), NULL);
 	g_signal_connect(tooltip.zoom, "draw", G_CALLBACK(draw_tooltip), NULL);
-	g_signal_connect(overlay->window, "scroll-event", G_CALLBACK(event_scroll), NULL);
-	g_signal_connect(overlay->window, "motion-notify-event", G_CALLBACK(event_mouse_move), NULL);
-	g_signal_connect(overlay->window, "button-press-event", G_CALLBACK(event_mouse_press_release), NULL);
-	g_signal_connect(overlay->window, "button-release-event", G_CALLBACK(event_mouse_press_release), NULL);
+	g_signal_connect(overlay.window, "scroll-event", G_CALLBACK(event_scroll), NULL);
+	g_signal_connect(overlay.window, "motion-notify-event", G_CALLBACK(event_mouse_move), NULL);
+	g_signal_connect(overlay.window, "button-press-event", G_CALLBACK(event_mouse_press_release), NULL);
+	g_signal_connect(overlay.window, "button-release-event", G_CALLBACK(event_mouse_press_release), NULL);
 }
 

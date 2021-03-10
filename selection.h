@@ -5,11 +5,9 @@
 #include <stdbool.h>
 #include "geometry.h"
 
-struct overlay;
-
 enum drag_status {
-    DRAG_STATUS_NONE              = 0,
-    DRAG_STATUS_CREATE            = 1,
+	DRAG_STATUS_NONE              = 0,
+	DRAG_STATUS_CREATE            = 1,
 	DRAG_STATUS_MOVE              = 2,
 	DRAG_STATUS_MOVE_LEFT         = DRAG_STATUS_MOVE + 1,
 	DRAG_STATUS_MOVE_RIGHT        = DRAG_STATUS_MOVE + 2,
@@ -38,15 +36,15 @@ enum modifier_mask {
 struct selection {
 	GtkWidget *widget;
 
-    GtkWidget* bgimage;
+	GtkWidget* bgimage;
 
-    GdkCursor *cursors[NUM_DRAG_STATUS];
+	GdkCursor *cursors[NUM_DRAG_STATUS];
 
-    enum modifier_mask modifier_mask;
-    guint modifier_codes[NUM_MODIFIER_KEY];
+	enum modifier_mask modifier_mask;
+	guint modifier_codes[NUM_MODIFIER_KEY];
 
-    int drag_threshold;
-    int edge_threshold;
+	int drag_threshold;
+	int edge_threshold;
 
 	bool drag_threshold_reached;
 	enum drag_status drag_status;
@@ -56,13 +54,15 @@ struct selection {
 	int mouse_x, mouse_y;
 
 	bool has_selected;
-    struct rect selected;
+	struct rect selected;
 
 	bool has_suggested;
 	struct rect suggested;
 };
 
-struct selection *selection_init(struct overlay *overlay);
+extern struct selection selection;
+
+void selection_init();
 void selection_post_init(void);
 
 #endif

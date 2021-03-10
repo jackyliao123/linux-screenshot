@@ -5,8 +5,6 @@
 
 #include "display.h"
 
-struct overlay;
-
 struct tooltip {
 	GtkWidget *widget;
     GtkWidget *fixed;
@@ -19,7 +17,9 @@ struct tooltip {
     size_t label_cnt;
 };
 
-struct tooltip *tooltip_init(struct overlay *overlay);
+extern struct tooltip tooltip;
+
+void tooltip_init();
 void tooltip_post_init(void);
 
 #endif

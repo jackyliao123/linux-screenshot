@@ -33,7 +33,7 @@ event_key_press(GtkWidget *widget, GdkEventKey *event) {
 	}
 }
 
-struct overlay *
+void
 overlay_init(struct screenshot *screenshot, struct window_tree *tree, struct output_list *outputs, struct image_writer *writer) {
 	overlay.screenshot = screenshot;
 	overlay.tree = tree;
@@ -69,13 +69,13 @@ overlay_init(struct screenshot *screenshot, struct window_tree *tree, struct out
 	gtk_widget_set_size_request(overlay.window, width, height);
 //	gtk_window_fullscreen(GTK_WINDOW(overlay.window));
 
-	overlay.selection = selection_init(&overlay);
-	overlay.tooltip = tooltip_init(&overlay);
+	selection_init();
+	tooltip_init();
 
 	GtkWidget *overlay_container = gtk_overlay_new();
 	gtk_overlay_add_overlay(GTK_OVERLAY(overlay_container), gtk_image_new_from_surface(overlay.screenshot_surface));
-	gtk_overlay_add_overlay(GTK_OVERLAY(overlay_container), overlay.selection->widget);
-	gtk_overlay_add_overlay(GTK_OVERLAY(overlay_container), overlay.tooltip->widget);
+	gtk_overlay_add_overlay(GTK_OVERLAY(overlay_container), selection.widget);
+	gtk_overlay_add_overlay(GTK_OVERLAY(overlay_container), tooltip.widget);
 
 	gtk_container_add(GTK_CONTAINER(overlay.window), overlay_container);
 	gtk_widget_set_events(overlay.window, GDK_POINTER_MOTION_MASK);
@@ -101,6 +101,4 @@ overlay_init(struct screenshot *screenshot, struct window_tree *tree, struct out
 	tooltip_post_init();
 
 	g_signal_connect(overlay.window, "key-press-event", G_CALLBACK(event_key_press), NULL);
-
-	return &overlay;
 }

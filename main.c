@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
 
 	gtk_init(NULL, NULL);
 
-	struct overlay *overlay = overlay_init(&screenshot, tree, &outputs, writer);
+	overlay_init(&screenshot, tree, &outputs, writer);
 
 	gtk_main();
 
