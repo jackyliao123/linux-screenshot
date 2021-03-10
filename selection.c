@@ -224,6 +224,16 @@ event_key_press_release(GtkWidget *widget, GdkEventKey *event) {
 			} else {
 				exit(0);
 			}
+		} else if(event->keyval == GDK_KEY_Return) {
+			struct rect bounds = {0};
+			if(selection.has_selected) {
+				bounds = selection.selected;
+			} else {
+				bounds.x2 = overlay->screenshot->width;
+				bounds.y2 = overlay->screenshot->height;
+			}
+			overlay->writer->write_image(overlay->screenshot, &bounds);
+			exit(0);
 		}
 	}
 	gtk_widget_queue_draw(selection.bgimage);

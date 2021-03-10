@@ -34,15 +34,16 @@ event_key_press(GtkWidget *widget, GdkEventKey *event) {
 }
 
 struct overlay *
-overlay_init(struct screenshot *screenshot, struct window_tree *tree, struct output_list *outputs) {
+overlay_init(struct screenshot *screenshot, struct window_tree *tree, struct output_list *outputs, struct image_writer *writer) {
 	overlay.screenshot = screenshot;
 	overlay.tree = tree;
 	overlay.outputs = outputs;
+	overlay.writer = writer;
 
 	int width = screenshot->width;
 	int height = screenshot->height;
 
-	cairo_format_t fmt = CAIRO_FORMAT_RGB24;
+	cairo_format_t fmt = CAIRO_FORMAT_ARGB32;
 	overlay.screenshot_surface = cairo_image_surface_create_for_data(
 			screenshot->buf, fmt, width, height,
 			cairo_format_stride_for_width(fmt, width));

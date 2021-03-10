@@ -3,6 +3,7 @@
 
 #include "display.h"
 #include "overlay.h"
+#include "writer.h"
 
 int main(int argc, char *argv[]) {
 	struct display_X11 *display = display_X11_create();
@@ -14,6 +15,8 @@ int main(int argc, char *argv[]) {
 	struct window_tree *tree = display->impl->get_windows();
 	display->impl->get_outputs(&outputs);
 
+	struct image_writer *writer = new_image_writer_file();
+
 //	struct screenshot screenshot = {
 //			.width = 1920,
 //			.height = 1080,
@@ -23,7 +26,7 @@ int main(int argc, char *argv[]) {
 
 	gtk_init(NULL, NULL);
 
-	struct overlay *overlay = overlay_init(&screenshot, tree, &outputs);
+	struct overlay *overlay = overlay_init(&screenshot, tree, &outputs, writer);
 
 	gtk_main();
 
