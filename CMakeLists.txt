@@ -11,7 +11,7 @@ add_definitions(${GTK3_CFLAGS_OTHER})
 
 file(GLOB src "*.c")
 
-set(CMAKE_C_FLAGS "-fbounds-check -Ofast")
+set(CMAKE_C_FLAGS "-fbounds-check -O0")
 
 add_executable(screenshot ${src})
 

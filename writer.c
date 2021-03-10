@@ -1,9 +1,11 @@
 #include <zlib.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <stdint.h>
+
+#include <gtk/gtk.h>
 
 #include "writer.h"
+#include "overlay.h"
 
 static unsigned char *
 alloc_compress(unsigned char *data, int data_len, int *out_len, int quality) {
@@ -30,18 +32,19 @@ write_image(const struct screenshot *screenshot, const struct rect *bounds) {
 	int y = bounds->y1;
 	int width = bounds->x2 - bounds->x1;
 	int height = bounds->y2 - bounds->y1;
-	int stride = screenshot->width;
-	uint32_t *src = screenshot->buf;
-	uint32_t *dst = malloc(width * height * 4);
-	for(int yy = 0; yy < height; ++yy) {
-		uint32_t *src_sub = src + (yy + y) * stride + x;
-		uint32_t *dst_sub = dst + yy * width;
-		for(int xx = 0; xx < width; ++xx) {
-			dst_sub[xx] = src_sub[xx] & 0xFF00FF00 | (src_sub[xx] & 0x00FF0000) >> 16 | (src_sub[xx] & 0x000000FF) << 16;
-		}
+
+	GdkPixbuf *pixbuf = gdk_pixbuf_get_from_surface(overlay.memory_surface, x, y, width, height);
+	gdk_pixbuf_save(pixbuf, "output.png", "png", NULL, NULL);
+
+	GSList *formats = gdk_pixbuf_get_formats();
+	GSList *ptr = formats;
+	while(ptr != NULL) {
+		GdkPixbufFormat *format = (GdkPixbufFormat *) ptr->data;
+		printf("%s %s %d\n", gdk_pixbuf_format_get_name(format), gdk_pixbuf_format_get_description(format), gdk_pixbuf_format_is_writable(format));
+		ptr = ptr->next;
 	}
-	stbi_write_png("output.png", width, height, 4, dst, width * 4);
-	free(dst);
+	g_slist_free(formats);
+
 	return true;
 }
 

@@ -31,6 +31,7 @@ event_key_press(GtkWidget *widget, GdkEventKey *event) {
 		gdk_display_get_pointer(overlay.gdk_display, &screen, &x, &y, NULL);
 		gdk_display_warp_pointer(overlay.gdk_display, screen, x + dx, y + dy);
 	}
+	return False;
 }
 
 void
@@ -42,11 +43,6 @@ overlay_init(struct screenshot *screenshot, struct window_tree *tree, struct out
 
 	int width = screenshot->width;
 	int height = screenshot->height;
-
-	cairo_format_t fmt = CAIRO_FORMAT_ARGB32;
-	overlay.screenshot_surface = cairo_image_surface_create_for_data(
-			screenshot->buf, fmt, width, height,
-			cairo_format_stride_for_width(fmt, width));
 
 //	overlay.window = gtk_window_new(GTK_WINDOW_POPUP);
 
@@ -73,7 +69,6 @@ overlay_init(struct screenshot *screenshot, struct window_tree *tree, struct out
 	tooltip_init();
 
 	GtkWidget *overlay_container = gtk_overlay_new();
-	gtk_overlay_add_overlay(GTK_OVERLAY(overlay_container), gtk_image_new_from_surface(overlay.screenshot_surface));
 	gtk_overlay_add_overlay(GTK_OVERLAY(overlay_container), selection.widget);
 	gtk_overlay_add_overlay(GTK_OVERLAY(overlay_container), tooltip.widget);
 
@@ -84,6 +79,16 @@ overlay_init(struct screenshot *screenshot, struct window_tree *tree, struct out
 	//	Grab input
 	GdkWindow *g_window = gtk_widget_get_window(overlay.window);
 	GdkDisplay *g_display = gdk_window_get_display(g_window);
+
+	cairo_format_t fmt = CAIRO_FORMAT_ARGB32;
+	overlay.memory_surface = cairo_image_surface_create_for_data(
+			screenshot->buf, fmt, width, height,
+			cairo_format_stride_for_width(fmt, width));
+	overlay.drawing_surface = gdk_window_create_similar_surface(g_window, CAIRO_CONTENT_COLOR_ALPHA, overlay.screenshot->width, overlay.screenshot->height);
+	cairo_t *cr = cairo_create(overlay.drawing_surface);
+	cairo_set_source_surface(cr, overlay.memory_surface, 0, 0);
+	cairo_paint(cr);
+	cairo_destroy(cr);
 
 	overlay.gdk_window = g_window;
 	overlay.gdk_display = g_display;

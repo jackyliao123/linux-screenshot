@@ -89,7 +89,7 @@ draw_tooltip(GtkWidget *widget, cairo_t *cr, gpointer data) {
 	int offset_x = tooltip.center_x - dx - x1;
 	int offset_y = tooltip.center_y - dy - y1;
 
-	cairo_surface_t *subsurface = cairo_surface_create_for_rectangle(overlay.screenshot_surface,
+	cairo_surface_t *subsurface = cairo_surface_create_for_rectangle(overlay.drawing_surface,
 																  x1, y1, x2 - x1, y2 - y1);
 
 	cairo_scale(cr, tooltip.zoom_amount, tooltip.zoom_amount);

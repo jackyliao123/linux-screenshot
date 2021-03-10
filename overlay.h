@@ -15,7 +15,8 @@ struct overlay {
 	GdkWindow *gdk_window;
 	GdkDisplay *gdk_display;
 
-	cairo_surface_t *screenshot_surface;
+	cairo_surface_t *drawing_surface;
+	cairo_surface_t *memory_surface;
 
 	struct image_writer *writer;
 };

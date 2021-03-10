@@ -5,6 +5,9 @@ struct selection selection;
 
 static gint
 draw_bg(GtkWidget *widget, cairo_t *cr, gpointer data) {
+	cairo_set_source_surface(cr, overlay.drawing_surface, 0, 0);
+	cairo_paint(cr);
+
 	cairo_set_source_rgba(cr, 0, 0, 0, 0.6);
 	int stroke_half = 3;
 
