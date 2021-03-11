@@ -8,21 +8,42 @@ draw_bg(GtkWidget *widget, cairo_t *cr, gpointer data) {
 	cairo_set_source_surface(cr, overlay.drawing_surface, 0, 0);
 	cairo_paint(cr);
 
-	cairo_set_source_rgba(cr, 0, 0, 0, 0.6);
 	int stroke_half = 3;
 
-	if(selection.has_selected) {
-		cairo_set_line_width(cr, stroke_half * 2);
-		cairo_rectangle(cr, 0, 0, overlay.screenshot->width, overlay.screenshot->height);
+	cairo_set_source_rgba(cr, 0, 0, 0, 0.6);
+	cairo_set_line_width(cr, stroke_half * 2);
 
+	bool suggesting = false;
+	bool undarken = selection.has_selected;
+	struct rect undarken_bounds = selection.selected;
+	if(selection.has_suggested && (!selection.has_selected || selection.modifier_mask & MODIFIER_MASK_ADD_SELECTION)) {
+		if(selection.has_selected) {
+			undarken_bounds = geom_union(&selection.suggested, &selection.selected);
+		} else {
+			undarken_bounds = selection.suggested;
+		}
+		suggesting = true;
+		undarken = true;
+	}
+
+	cairo_save(cr);
+
+	cairo_rectangle(cr, 0, 0, overlay.screenshot->width, overlay.screenshot->height);
+
+	if(undarken) {
 		cairo_rectangle(cr,
-				  selection.selected.x1,
-				  selection.selected.y2,
-				  selection.selected.x2 - selection.selected.x1,
-				  selection.selected.y1 - selection.selected.y2);
+		                undarken_bounds.x1,
+		                undarken_bounds.y2,
+		                undarken_bounds.x2 - undarken_bounds.x1,
+		                undarken_bounds.y1 - undarken_bounds.y2);
 		cairo_clip(cr);
-		cairo_paint(cr);
+	}
+	cairo_paint(cr);
 
+	cairo_restore(cr);
+
+
+	if(selection.has_selected) {
 		struct rect draw_bounds = geom_expand(&selection.selected, stroke_half);
 
 		cairo_set_source_rgba(cr, 1, 0.5, 0, 0.5);
@@ -34,27 +55,14 @@ draw_bg(GtkWidget *widget, cairo_t *cr, gpointer data) {
 		cairo_stroke(cr);
 	}
 
-	if(selection.has_suggested && (!selection.has_selected || selection.modifier_mask & MODIFIER_MASK_ADD_SELECTION)) {
-		cairo_set_line_width(cr, stroke_half * 2);
-		struct rect draw_bounds = selection.suggested;
-		if(selection.has_selected) {
-			draw_bounds = geom_union(&draw_bounds, &selection.selected);
-		}
-		cairo_set_source_rgba(cr, 0, 0.5, 0.7, 0.3);
-		cairo_rectangle(cr,
-		                draw_bounds.x1,
-		                draw_bounds.y1,
-		                draw_bounds.x2 - draw_bounds.x1,
-		                draw_bounds.y2 - draw_bounds.y1);
-		cairo_fill(cr);
-
-		draw_bounds = geom_expand(&draw_bounds, stroke_half);
+	if(suggesting) {
+		undarken_bounds = geom_expand(&undarken_bounds, stroke_half);
 		cairo_set_source_rgba(cr, 0, 0.5, 1, 0.5);
 		cairo_rectangle(cr,
-		                draw_bounds.x1,
-		                draw_bounds.y1,
-		                draw_bounds.x2 - draw_bounds.x1,
-		                draw_bounds.y2 - draw_bounds.y1);
+		                undarken_bounds.x1,
+		                undarken_bounds.y1,
+		                undarken_bounds.x2 - undarken_bounds.x1,
+		                undarken_bounds.y2 - undarken_bounds.y1);
 		cairo_stroke(cr);
 	}
 
@@ -128,8 +136,8 @@ event_mouse_move(GtkWidget *widget, GdkEventMotion *event) {
 
 	update_suggested();
 
-	int dx = mouse_x - selection.px;
-	int dy = mouse_y - selection.py;
+	int dx = (int) event->x - selection.px;
+	int dy = (int) event->y - selection.py;
 
 	if(selection.drag_status == DRAG_STATUS_NONE) {
 		compute_drag_status();
