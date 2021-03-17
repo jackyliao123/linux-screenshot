@@ -1,11 +1,11 @@
 #include "selection.h"
-#include "overlay.h"
+#include "ui.h"
 
 struct selection selection;
 
 static gint
 draw_bg(GtkWidget *widget, cairo_t *cr, gpointer data) {
-	cairo_set_source_surface(cr, overlay.drawing_surface, 0, 0);
+	cairo_set_source_surface(cr, ui.drawing_surface, 0, 0);
 	cairo_paint(cr);
 
 	int stroke_half = 3;
@@ -28,7 +28,7 @@ draw_bg(GtkWidget *widget, cairo_t *cr, gpointer data) {
 
 	cairo_save(cr);
 
-	cairo_rectangle(cr, 0, 0, overlay.screenshot->width, overlay.screenshot->height);
+	cairo_rectangle(cr, 0, 0, ui.screenshot->width, ui.screenshot->height);
 
 	if(undarken) {
 		cairo_rectangle(cr,
@@ -73,13 +73,13 @@ static void
 update_suggested(void) {
 	selection.has_suggested = false;
 	if(selection.modifier_mask & MODIFIER_MASK_SELECT_OUTPUT) {
-		struct output *output = geom_get_output_under(overlay.outputs, selection.mouse_x, selection.mouse_y);
+		struct output *output = geom_get_output_under(ui.outputs, selection.mouse_x, selection.mouse_y);
 		if(output) {
 			selection.suggested = output->bounds;
 			selection.has_suggested = true;
 		}
 	} else {
-		struct window_tree *window = geom_get_window_under(overlay.tree, selection.mouse_x, selection.mouse_y);
+		struct window_tree *window = geom_get_window_under(ui.tree, selection.mouse_x, selection.mouse_y);
 		if(window) {
 			selection.suggested = window->bounds;
 			selection.has_suggested = true;
@@ -123,14 +123,14 @@ compute_drag_status(void) {
 
 done:
 	selection.preview_drag_status = status;
-	gdk_window_set_cursor(overlay.gdk_window, selection.cursors[status]);
+	gdk_window_set_cursor(ui.gdk_window, selection.cursors[status]);
 	return status;
 }
 
 static gboolean
 event_mouse_move(GtkWidget *widget, GdkEventMotion *event) {
-	int xmax = overlay.screenshot->width;
-	int ymax = overlay.screenshot->height;
+	int xmax = ui.screenshot->width;
+	int ymax = ui.screenshot->height;
 	int mouse_x = selection.mouse_x = clamp(event->x, 0, xmax - 1);
 	int mouse_y = selection.mouse_y = clamp(event->y, 0, ymax - 1);
 
@@ -176,8 +176,8 @@ event_mouse_move(GtkWidget *widget, GdkEventMotion *event) {
 
 static gboolean
 event_mouse_press_release(GtkWidget *widget, GdkEventButton *event) {
-	int xmax = overlay.screenshot->width;
-	int ymax = overlay.screenshot->height;
+	int xmax = ui.screenshot->width;
+	int ymax = ui.screenshot->height;
 	int mouse_x = selection.mouse_x = clamp(event->x, 0, xmax - 1);
 	int mouse_y = selection.mouse_y = clamp(event->y, 0, ymax - 1);
 
@@ -227,27 +227,26 @@ event_key_press_release(GtkWidget *widget, GdkEventKey *event) {
 		compute_drag_status();
 	}
 
-	if(event->type == GDK_KEY_PRESS) {
-		if(event->keyval == GDK_KEY_Escape) {
-			if(selection.has_selected) {
-				selection.has_selected = false;
-			} else {
-				exit(0);
-			}
-		} else if(event->keyval == GDK_KEY_Return) {
-			struct rect bounds = {0};
-			if(selection.has_selected) {
-				bounds = selection.selected;
-			} else {
-				bounds.x2 = overlay.screenshot->width;
-				bounds.y2 = overlay.screenshot->height;
-			}
-			overlay.writer->write_image(overlay.screenshot, &bounds);
-			exit(0);
-		}
-	}
 	gtk_widget_queue_draw(selection.bgimage);
 	return False;
+}
+
+bool
+selection_deselect() {
+	if(selection.has_selected) {
+		selection.has_selected = false;
+		return true;
+	}
+	return false;
+}
+
+struct rect
+selection_get_selection() {
+	if(selection.has_selected) {
+		return selection.selected;
+	} else {
+		return (struct rect) {0, 0, ui.screenshot->width, ui.screenshot->height};
+	}
 }
 
 void
@@ -269,17 +268,17 @@ selection_post_init(void) {
 	};
 
 	for(unsigned i = 0; i < NUM_DRAG_STATUS; ++i) {
-		selection.cursors[i] = gdk_cursor_new_from_name(overlay.gdk_display, cursor_names[i]);
+		selection.cursors[i] = gdk_cursor_new_from_name(ui.gdk_display, cursor_names[i]);
 	}
 
 	selection.modifier_codes[MODIFIER_KEY_ADD_SELECTION] = GDK_KEY_Shift_L;
 	selection.modifier_codes[MODIFIER_KEY_SELECT_OUTPUT] = GDK_KEY_Control_L;
 	selection.modifier_codes[MODIFIER_KEY_RESIZE_CORNER] = GDK_KEY_Alt_L;
 
-	g_signal_connect(overlay.window, "button-press-event", G_CALLBACK(event_mouse_press_release), NULL);
-	g_signal_connect(overlay.window, "button-release-event", G_CALLBACK(event_mouse_press_release), NULL);
-	g_signal_connect(overlay.window, "motion-notify-event", G_CALLBACK(event_mouse_move), NULL);
-	g_signal_connect(overlay.window, "key-press-event", G_CALLBACK(event_key_press_release), NULL);
-	g_signal_connect(overlay.window, "key-release-event", G_CALLBACK(event_key_press_release), NULL);
+	g_signal_connect(ui.window, "button-press-event", G_CALLBACK(event_mouse_press_release), NULL);
+	g_signal_connect(ui.window, "button-release-event", G_CALLBACK(event_mouse_press_release), NULL);
+	g_signal_connect(ui.window, "motion-notify-event", G_CALLBACK(event_mouse_move), NULL);
+	g_signal_connect(ui.window, "key-press-event", G_CALLBACK(event_key_press_release), NULL);
+	g_signal_connect(ui.window, "key-release-event", G_CALLBACK(event_key_press_release), NULL);
 	g_signal_connect(selection.bgimage, "draw", G_CALLBACK(draw_bg), NULL);
 }

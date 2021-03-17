@@ -3,10 +3,7 @@
 
 #include "display.h"
 
-struct image_writer {
-	bool (*write_image)(const struct screenshot *screenshot, const struct rect *bounds);
-};
-
-struct image_writer *new_image_writer_file();
+bool writer_save_image_finish(GAsyncResult *result, GError **error);
+bool writer_save_image_async(cairo_surface_t *memory_surface, const struct rect *bounds, const char *filename, const char *format, GCancellable *cancellable, GAsyncReadyCallback callback, gpointer user_data);
 
 #endif

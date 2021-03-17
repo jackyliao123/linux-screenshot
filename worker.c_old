@@ -1,0 +1,58 @@
+#include <stdlib.h>
+
+#include "worker.h_old"
+
+struct worker worker;
+
+void
+worker_init(int queue_size) {
+	pthread_mutex_init(&worker.mutex, NULL);
+	pthread_cond_init(&worker.not_empty, NULL);
+	pthread_cond_init(&worker.not_full, NULL);
+	worker.max_jobs = queue_size;
+	worker.jobs = malloc(queue_size * sizeof(struct worker_job));
+}
+
+void
+worker_queue_job(struct worker_job job) {
+	pthread_mutex_lock(&worker.mutex);
+	while(worker.num_job == worker.max_jobs) {
+		pthread_cond_wait(&worker.not_full, &worker.mutex);
+	}
+	if(worker.num_job == 0) {
+		pthread_cond_broadcast(&worker.not_empty);
+	}
+	worker.num_job++;
+	worker.jobs[worker.wr_ind++] = job;
+	if(worker.wr_ind == worker.max_jobs) {
+		worker.wr_ind = 0;
+	}
+	pthread_mutex_unlock(&worker.mutex);
+}
+
+struct worker_job
+worker_dequeue_job() {
+	struct worker_job job;
+	pthread_mutex_lock(&worker.mutex);
+	while(worker.num_job == 0) {
+		pthread_cond_wait(&worker.not_empty, &worker.mutex);
+	}
+	if(worker.num_job == worker.max_jobs) {
+		pthread_cond_broadcast(&worker.not_full);
+	}
+	worker.num_job--;
+	job = worker.jobs[worker.rd_ind++];
+	if(worker.rd_ind == worker.max_jobs) {
+		worker.rd_ind = 0;
+	}
+	pthread_mutex_unlock(&worker.mutex);
+	return job;
+}
+
+void
+worker_main() {
+	worker.running = true;
+	while(worker.running) {
+		struct worker_job job = worker_dequeue_job();
+	}
+}

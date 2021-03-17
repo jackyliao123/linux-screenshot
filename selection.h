@@ -64,5 +64,7 @@ extern struct selection selection;
 
 void selection_init();
 void selection_post_init(void);
+struct rect selection_get_selection();
+bool selection_deselect();
 
 #endif

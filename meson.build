@@ -18,7 +18,7 @@ Xrandr_dep = dependency('xrandr')
 src_files = files(
   'main.c',
   'display_X11.c',
-  'overlay.c',
+  'ui.c',
   'tooltip.c',
   'selection.c',
   'geometry.c',

@@ -1,58 +1,80 @@
-#include <zlib.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
 #include <gtk/gtk.h>
 
 #include "writer.h"
-#include "overlay.h"
 
-static unsigned char *
-alloc_compress(unsigned char *data, int data_len, int *out_len, int quality) {
-	size_t alloc_len = compressBound(data_len);
-	unsigned char *buf = malloc(alloc_len);
-	if(!buf) {
-		return NULL;
+struct save_task_data {
+	cairo_surface_t *memory_surface;
+	struct rect bounds;
+	char *filename;
+	char *format;
+};
+
+static void
+save_task(GTask *task, void *obj, struct save_task_data *data, GCancellable *cancellable) {
+	int x = data->bounds.x1;
+	int y = data->bounds.y1;
+	int width = data->bounds.x2 - data->bounds.x1;
+	int height = data->bounds.y2 - data->bounds.y1;
+
+	GError *error = NULL;
+
+	GdkPixbuf *pixbuf = gdk_pixbuf_get_from_surface(data->memory_surface, x, y, width, height);
+	bool success = gdk_pixbuf_save(pixbuf, data->filename, data->format, &error, NULL);
+	sleep(10);
+
+	if(success) {
+		g_task_return_boolean(task, TRUE);
+	} else {
+		g_task_return_error(task, error);
 	}
-	if(compress2(buf, &alloc_len, data, data_len, quality) != Z_OK) {
-		free(buf);
-		return NULL;
-	}
-	*out_len = alloc_len;
-	return buf;
 }
 
-#define STBIW_ZLIB_COMPRESS alloc_compress
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
+static void
+destroy_save_task_data(struct save_task_data *data) {
+	g_free(data->filename);
+	g_free(data->format);
+	g_slice_free(struct save_task_data, data);
+}
 
-static bool
-write_image(const struct screenshot *screenshot, const struct rect *bounds) {
-	int x = bounds->x1;
-	int y = bounds->y1;
-	int width = bounds->x2 - bounds->x1;
-	int height = bounds->y2 - bounds->y1;
-
-	GdkPixbuf *pixbuf = gdk_pixbuf_get_from_surface(overlay.memory_surface, x, y, width, height);
-	gdk_pixbuf_save(pixbuf, "output.png", "png", NULL, NULL);
-
-	GSList *formats = gdk_pixbuf_get_formats();
-	GSList *ptr = formats;
-	while(ptr != NULL) {
-		GdkPixbufFormat *format = (GdkPixbufFormat *) ptr->data;
-		printf("%s %s %d\n", gdk_pixbuf_format_get_name(format), gdk_pixbuf_format_get_description(format), gdk_pixbuf_format_is_writable(format));
-		ptr = ptr->next;
+char *
+writer_get_available_filename() {
+	const char *dir = g_get_user_special_dir(G_USER_DIRECTORY_PICTURES);
+	if(dir == NULL) {
+		dir = ".";
 	}
-	g_slist_free(formats);
+}
+
+bool
+writer_save_image_finish(GAsyncResult *result, GError **error) {
+	GTask *task = G_TASK(result);
+	return g_task_propagate_boolean(task, error);
+}
+
+bool
+writer_save_image_async(cairo_surface_t *memory_surface, const struct rect *bounds, const char *filename, const char *format, GCancellable *cancellable, GAsyncReadyCallback callback, gpointer user_data) {
+	struct save_task_data *data = g_slice_new(struct save_task_data);
+	data->memory_surface = memory_surface;
+	data->bounds = *bounds;
+	data->filename = g_strdup(filename);
+	data->format = g_strdup(format);
+
+	GTask *task = g_task_new(NULL, cancellable, callback, user_data);
+	g_task_set_source_tag(task, writer_save_image_async);
+	g_task_set_task_data(task, data, (GDestroyNotify) destroy_save_task_data);
+	g_task_run_in_thread(task, (GTaskThreadFunc) save_task);
+	g_object_unref(task);
 
 	return true;
 }
 
-struct image_writer image_writer_file = {
-		.write_image = write_image
-};
-
-struct image_writer *
-new_image_writer_file() {
-	return &image_writer_file;
-}
+//	GSList *formats = gdk_pixbuf_get_formats();
+//	GSList *ptr = formats;
+//	while(ptr != NULL) {
+//		GdkPixbufFormat *format = (GdkPixbufFormat *) ptr->data;
+//		printf("%s %s %d\n", gdk_pixbuf_format_get_name(format), gdk_pixbuf_format_get_description(format), gdk_pixbuf_format_is_writable(format));
+//		ptr = ptr->next;
+//	}
+//	g_slist_free(formats);

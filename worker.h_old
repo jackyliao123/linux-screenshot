@@ -1,0 +1,35 @@
+#ifndef WORKER_H
+#define WORKER_H
+
+#include <pthread.h>
+#include <stdbool.h>
+
+enum worker_job_type {
+	JOB_EXIT,
+	JOB_SCREENSHOT,
+	JOB_SAVE,
+	JOB_COPY,
+};
+
+struct worker_job {
+
+};
+
+struct worker {
+	pthread_mutex_t mutex;
+	pthread_cond_t not_full;
+	pthread_cond_t not_empty;
+	size_t max_jobs;
+	size_t num_job;
+	size_t rd_ind;
+	size_t wr_ind;
+	struct worker_job *jobs;
+	volatile bool running;
+};
+
+void worker_main();
+void worker_wait();
+
+extern struct worker worker;
+
+#endif

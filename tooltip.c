@@ -1,7 +1,7 @@
 #include <math.h>
 
 #include "tooltip.h"
-#include "overlay.h"
+#include "ui.h"
 #include "selection.h"
 
 struct tooltip tooltip;
@@ -23,8 +23,8 @@ struct rgba {
 static struct rgba
 get_pixel(int x, int y) {
     struct rgba clr = {};
-    if(x >= 0 && y >= 0 && x < overlay.screenshot->width && y < overlay.screenshot->height) {
-        uint32_t val = *((uint32_t *) overlay.screenshot->buf + (y * overlay.screenshot->width + x));
+    if(x >= 0 && y >= 0 && x < ui.screenshot->width && y < ui.screenshot->height) {
+        uint32_t val = *((uint32_t *) ui.screenshot->buf + (y * ui.screenshot->width + x));
         clr.r = (val >> 16) & 0xff;
         clr.g = (val >> 8) & 0xff;
         clr.b = (val >> 0) & 0xff;
@@ -75,8 +75,8 @@ draw_tooltip(GtkWidget *widget, cairo_t *cr, gpointer data) {
 	cairo_matrix_t ctm;
 	cairo_get_matrix(cr, &ctm);
 
-	int xmax = overlay.screenshot->width;
-	int ymax = overlay.screenshot->height;
+	int xmax = ui.screenshot->width;
+	int ymax = ui.screenshot->height;
 
 	int dx = (int) ceil(hwidth / tooltip.zoom_amount);
 	int dy = (int) ceil(hheight / tooltip.zoom_amount);
@@ -89,8 +89,8 @@ draw_tooltip(GtkWidget *widget, cairo_t *cr, gpointer data) {
 	int offset_x = tooltip.center_x - dx - x1;
 	int offset_y = tooltip.center_y - dy - y1;
 
-	cairo_surface_t *subsurface = cairo_surface_create_for_rectangle(overlay.drawing_surface,
-																  x1, y1, x2 - x1, y2 - y1);
+	cairo_surface_t *subsurface = cairo_surface_create_for_rectangle(ui.drawing_surface,
+	                                                                 x1, y1, x2 - x1, y2 - y1);
 
 	cairo_scale(cr, tooltip.zoom_amount, tooltip.zoom_amount);
 	cairo_set_source_surface(cr, subsurface,
@@ -173,12 +173,12 @@ update_mouse_position(int x, int y) {
 	}
 
 	struct rect bounds = {0};
-	struct output *output = geom_get_output_under(overlay.outputs, x, y);
+	struct output *output = geom_get_output_under(ui.outputs, x, y);
 	if(output) {
 		bounds = output->bounds;
 	} else {
-		bounds.x2 = overlay.screenshot->width;
-		bounds.y2 = overlay.screenshot->height;
+		bounds.x2 = ui.screenshot->width;
+		bounds.y2 = ui.screenshot->height;
 	}
 
 	int place_x = x;
@@ -276,9 +276,9 @@ void
 tooltip_post_init(void) {
 	g_signal_connect(tooltip.zoom, "size-allocate", G_CALLBACK(get_canvas_size), NULL);
 	g_signal_connect(tooltip.zoom, "draw", G_CALLBACK(draw_tooltip), NULL);
-	g_signal_connect(overlay.window, "scroll-event", G_CALLBACK(event_scroll), NULL);
-	g_signal_connect(overlay.window, "motion-notify-event", G_CALLBACK(event_mouse_move), NULL);
-	g_signal_connect(overlay.window, "button-press-event", G_CALLBACK(event_mouse_press_release), NULL);
-	g_signal_connect(overlay.window, "button-release-event", G_CALLBACK(event_mouse_press_release), NULL);
+	g_signal_connect(ui.window, "scroll-event", G_CALLBACK(event_scroll), NULL);
+	g_signal_connect(ui.window, "motion-notify-event", G_CALLBACK(event_mouse_move), NULL);
+	g_signal_connect(ui.window, "button-press-event", G_CALLBACK(event_mouse_press_release), NULL);
+	g_signal_connect(ui.window, "button-release-event", G_CALLBACK(event_mouse_press_release), NULL);
 }
 
