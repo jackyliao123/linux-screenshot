@@ -5,8 +5,9 @@ struct selection selection;
 
 void render_text_around_bounds(cairo_t *cr, struct rect *bounds, int stroke_half, int padding_x, int padding_y) {
 	char text[64];
-	snprintf(text, sizeof(text), "%dx%d  (%d, %d)", bounds->x2 - bounds->x1, bounds->y2 - bounds->y1, bounds->x1, bounds->y1);
+	snprintf(text, sizeof(text), "%dx%d (%d,%d)", bounds->x2 - bounds->x1, bounds->y2 - bounds->y1, bounds->x1, bounds->y1);
 	struct rect outer_bounds = geom_expand(bounds, stroke_half * 2);
+	cairo_select_font_face(cr, "Monospace", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
 	cairo_set_font_size(cr, 15);
 
 	cairo_font_extents_t font_extents;
