@@ -67,7 +67,7 @@ update_text(void) {
 	}
 }
 
-static gint
+static gboolean
 draw_tooltip(GtkWidget *widget, cairo_t *cr, gpointer data) {
 	double hwidth = gtk_widget_get_allocated_width(widget) / 2.0;
 	double hheight = gtk_widget_get_allocated_height(widget) / 2.0;
@@ -131,7 +131,7 @@ draw_tooltip(GtkWidget *widget, cairo_t *cr, gpointer data) {
 	cairo_line_to(cr, hwidth * 2, (int) (hheight) + 0.5);
 	cairo_stroke(cr);
 
-	return False;
+	return TRUE;
 }
 
 static gboolean
@@ -146,7 +146,7 @@ event_scroll(GtkWidget *widget, GdkEventScroll *event) {
 	}
     tooltip.zoom_amount = amount;
 	gtk_widget_queue_draw(tooltip.popup);
-	return False;
+	return TRUE;
 }
 
 static void
@@ -198,13 +198,13 @@ update_mouse_position(int x, int y) {
 static gboolean
 event_mouse_move(GtkWidget *widget, GdkEventMotion *event) {
 	update_mouse_position(event->x, event->y);
-	return False;
+	return FALSE;
 }
 
 static gboolean
 event_mouse_press_release(GtkWidget *widget, GdkEventButton *event) {
 	update_mouse_position(event->x, event->y);
-	return False;
+	return FALSE;
 }
 
 static void

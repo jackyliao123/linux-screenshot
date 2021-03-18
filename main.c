@@ -2,7 +2,7 @@
 #include <string.h>
 #include <pthread.h>
 
-#include "display.h"
+#include "display_X11.h"
 #include "ui.h"
 #include "writer.h"
 
@@ -16,18 +16,18 @@ double t() {
 
 int main(int argc, char *argv[]) {
 	double tt = t();
-	struct display_X11 *display = display_X11_create();
+	struct display_impl *display = display_X11_init();
 
 //	printf("Init %.9f\n", t() - tt); tt = t();
 
 	struct output_list outputs;
 
 	struct screenshot screenshot = {0};
-	display->impl->get_screenshot(&screenshot);
+	display->get_screenshot(&screenshot);
 //	printf("Screenshot %.9f\n", t() - tt); tt = t();
-	struct window_tree *tree = display->impl->get_windows();
+	struct window_tree *tree = display->get_windows();
 //	printf("Window Tree %.9f\n", t() - tt); tt = t();
-	display->impl->get_outputs(&outputs);
+	display->get_outputs(&outputs);
 //	printf("Outputs %.9f\n", t() - tt); tt = t();
 
 //	struct screenshot screenshot = {

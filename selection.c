@@ -3,14 +3,53 @@
 
 struct selection selection;
 
-static gint
+void render_text_around_bounds(cairo_t *cr, struct rect *bounds, int stroke_half, int padding_x, int padding_y) {
+	char text[64];
+	snprintf(text, sizeof(text), "%dx%d  (%d, %d)", bounds->x2 - bounds->x1, bounds->y2 - bounds->y1, bounds->x1, bounds->y1);
+	struct rect outer_bounds = geom_expand(bounds, stroke_half * 2);
+	cairo_set_font_size(cr, 15);
+
+	cairo_font_extents_t font_extents;
+	cairo_font_extents(cr, &font_extents);
+
+	cairo_text_extents_t extents;
+	cairo_text_extents(cr, text, &extents);
+
+	struct rect text_bounds = {0, 0, 1 + padding_x * 2 + extents.width, 1 + padding_y * 2 - extents.y_bearing};
+	outer_bounds.y1 -= text_bounds.y2;
+	outer_bounds.y2 += text_bounds.y2;
+
+	struct rect clip_bounds;
+	struct output *output = geom_get_best_output(ui.outputs, &outer_bounds);
+	if(output) {
+		clip_bounds = geom_intersect(&output->bounds, &outer_bounds, NULL);
+	} else {
+		clip_bounds = *bounds;
+	}
+
+	text_bounds = geom_shift(&text_bounds, clip_bounds.x1, clip_bounds.y1);
+
+	cairo_set_source_rgba(cr, 1, 1, 1, 0.7);
+	cairo_rectangle(cr, text_bounds.x1, text_bounds.y1, text_bounds.x2 - text_bounds.x1, text_bounds.y2 - text_bounds.y1);
+	cairo_fill(cr);
+
+	cairo_set_source_rgba(cr, 0, 0, 0, 1);
+	cairo_move_to(cr, text_bounds.x1 + padding_x - extents.x_bearing, text_bounds.y1 + padding_y - extents.y_bearing);
+	cairo_show_text(cr, text);
+}
+
+static gboolean
 draw_bg(GtkWidget *widget, cairo_t *cr, gpointer data) {
 	cairo_set_source_surface(cr, ui.drawing_surface, 0, 0);
 	cairo_paint(cr);
 
 	int stroke_half = 3;
 
-	cairo_set_source_rgba(cr, 0, 0, 0, 0.6);
+	if(selection.modifier_mask & MODIFIER_MASK_REMOVE_OVERLAY) {
+		cairo_set_source_rgba(cr, 0, 0, 0, 1);
+	} else {
+		cairo_set_source_rgba(cr, 0, 0, 0, 0.6);
+	}
 	cairo_set_line_width(cr, stroke_half * 2);
 
 	bool suggesting = false;
@@ -42,8 +81,13 @@ draw_bg(GtkWidget *widget, cairo_t *cr, gpointer data) {
 
 	cairo_restore(cr);
 
+	if(selection.modifier_mask & MODIFIER_MASK_REMOVE_OVERLAY) {
+		return FALSE;
+	}
 
 	if(selection.has_selected) {
+		render_text_around_bounds(cr, &selection.selected, stroke_half, 7, 5);
+
 		struct rect draw_bounds = geom_expand(&selection.selected, stroke_half);
 
 		cairo_set_source_rgba(cr, 1, 0.5, 0, 0.5);
@@ -56,6 +100,8 @@ draw_bg(GtkWidget *widget, cairo_t *cr, gpointer data) {
 	}
 
 	if(suggesting) {
+		render_text_around_bounds(cr, &undarken_bounds, stroke_half, 7, 5);
+
 		undarken_bounds = geom_expand(&undarken_bounds, stroke_half);
 		cairo_set_source_rgba(cr, 0, 0.5, 1, 0.5);
 		cairo_rectangle(cr,
@@ -66,7 +112,7 @@ draw_bg(GtkWidget *widget, cairo_t *cr, gpointer data) {
 		cairo_stroke(cr);
 	}
 
-	return False;
+	return FALSE;
 }
 
 static void
@@ -171,7 +217,7 @@ event_mouse_move(GtkWidget *widget, GdkEventMotion *event) {
 			selection.selected.y2 = clamp(selection.prev_selected.y2 + dy, selection.prev_selected.y1 + 1, ymax);
 		}
 	}
-	return False;
+	return FALSE;
 }
 
 static gboolean
@@ -207,7 +253,7 @@ event_mouse_press_release(GtkWidget *widget, GdkEventButton *event) {
 		}
 	}
 	gtk_widget_queue_draw(selection.bgimage);
-	return False;
+	return FALSE;
 }
 
 static gboolean
@@ -228,7 +274,7 @@ event_key_press_release(GtkWidget *widget, GdkEventKey *event) {
 	}
 
 	gtk_widget_queue_draw(selection.bgimage);
-	return False;
+	return FALSE;
 }
 
 bool
@@ -274,6 +320,7 @@ selection_post_init(void) {
 	selection.modifier_codes[MODIFIER_KEY_ADD_SELECTION] = GDK_KEY_Shift_L;
 	selection.modifier_codes[MODIFIER_KEY_SELECT_OUTPUT] = GDK_KEY_Control_L;
 	selection.modifier_codes[MODIFIER_KEY_RESIZE_CORNER] = GDK_KEY_Alt_L;
+	selection.modifier_codes[MODIFIER_KEY_REMOVE_OVERLAY] = GDK_KEY_Tab;
 
 	g_signal_connect(ui.window, "button-press-event", G_CALLBACK(event_mouse_press_release), NULL);
 	g_signal_connect(ui.window, "button-release-event", G_CALLBACK(event_mouse_press_release), NULL);

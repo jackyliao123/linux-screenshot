@@ -3,15 +3,15 @@
 
 #include <X11/Xlib.h>
 
-struct display_impl;
+#include "display.h"
 
 struct display_X11 {
-    const struct display_impl *impl;
-
 	Display *display;
 	Window root;
 };
 
-struct display_X11 *display_X11_create(void);
+extern struct display_X11 display_X11;
+
+const struct display_impl *display_X11_init(void);
 
 #endif

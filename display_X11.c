@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-struct display_X11 display;
+struct display_X11 display_X11;
 
 static char *
 clone_str(const char *str) {
@@ -29,18 +29,18 @@ clone_str(const char *str) {
 static bool
 fill_node_from_window(Window window, struct window_tree *node) {
 	XWindowAttributes attrs;
-	XGetWindowAttributes(display.display, window, &attrs);
+	XGetWindowAttributes(display_X11.display, window, &attrs);
 	if(attrs.map_state != IsViewable) {
 		return false;
 	}
 
 	char *window_name = NULL;
-	XFetchName(display.display, window, &window_name);
+	XFetchName(display_X11.display, window, &window_name);
 	node->name = clone_str(window_name);
 	XFree(window_name);
 
 	Window child;
-	XTranslateCoordinates(display.display, window, display.root, -attrs.border_width,
+	XTranslateCoordinates(display_X11.display, window, display_X11.root, -attrs.border_width,
 	                      -attrs.border_width, &node->bounds.x1, &node->bounds.y1, &child);
 	node->bounds.x2 = node->bounds.x1 + attrs.width;
 	node->bounds.y2 = node->bounds.y1 + attrs.height;
@@ -49,7 +49,7 @@ fill_node_from_window(Window window, struct window_tree *node) {
 	Window garbage1, garbage2;
 	Window *children;
 	unsigned int nchildren;
-	XQueryTree(display.display, window, &garbage1, &garbage2, &children, &nchildren);
+	XQueryTree(display_X11.display, window, &garbage1, &garbage2, &children, &nchildren);
 	node->children = calloc(sizeof(struct window_tree), nchildren);
 	if(node->children == NULL && nchildren > 0) {
 		perror("malloc"); // TODO no errno is set by calloc
@@ -74,9 +74,9 @@ get_screenshot(struct screenshot *screenshot) {
 	XImage *img;
 
 	XWindowAttributes attrs;
-	XGetWindowAttributes(display.display, display.root, &attrs);
+	XGetWindowAttributes(display_X11.display, display_X11.root, &attrs);
 
-	img = XShmCreateImage(display.display, attrs.visual, attrs.depth, ZPixmap,
+	img = XShmCreateImage(display_X11.display, attrs.visual, attrs.depth, ZPixmap,
 			NULL, &shminfo, attrs.width, attrs.height);
 
 	size_t size = img->bytes_per_line * img->height;
@@ -89,13 +89,13 @@ get_screenshot(struct screenshot *screenshot) {
 	}
 	shminfo.shmaddr = img->data = (char *) shmat(shminfo.shmid, 0, 0);
 	shminfo.readOnly = False;
-	if (!XShmAttach(display.display, &shminfo)) {
+	if (!XShmAttach(display_X11.display, &shminfo)) {
 		perror("XShmAttach");
 		exit(-1);
 //		goto img_destroy;
 	}
 
-	XShmGetImage(display.display, display.root, img, 0, 0, AllPlanes);
+	XShmGetImage(display_X11.display, display_X11.root, img, 0, 0, AllPlanes);
 	
 	unsigned char *data_cpy = malloc(size);
 	if (data_cpy == NULL) {
@@ -105,7 +105,7 @@ get_screenshot(struct screenshot *screenshot) {
 	memcpy(data_cpy, img->data, size);
 
 shm_detach:
-	XShmDetach(display.display, &shminfo);
+	XShmDetach(display_X11.display, &shminfo);
 img_destroy:
 	XDestroyImage(img);
 	shmdt(shminfo.shmaddr);
@@ -119,7 +119,7 @@ img_destroy:
 static struct window_tree *
 get_windows(void) {
 	struct window_tree *root_node = calloc(sizeof(struct window_tree), 1);
-	fill_node_from_window(display.root, root_node);
+	fill_node_from_window(display_X11.root, root_node);
 	return root_node;
 }
 
@@ -130,9 +130,9 @@ get_outputs(struct output_list *output_list) {
 
 	struct output *outputs = calloc(sizeof(struct output), array_size);
 
-	XRRScreenResources *xrr_screen = XRRGetScreenResourcesCurrent(display.display, display.root);
+	XRRScreenResources *xrr_screen = XRRGetScreenResourcesCurrent(display_X11.display, display_X11.root);
 	for(int i = 0; i < xrr_screen->ncrtc; ++i) {
-		XRRCrtcInfo *xrr_crtc = XRRGetCrtcInfo(display.display, xrr_screen, xrr_screen->crtcs[i]);
+		XRRCrtcInfo *xrr_crtc = XRRGetCrtcInfo(display_X11.display, xrr_screen, xrr_screen->crtcs[i]);
 		struct rect bounds = {
 				.x1 = xrr_crtc->x,
 				.y1 = xrr_crtc->y,
@@ -140,7 +140,7 @@ get_outputs(struct output_list *output_list) {
 				.y2 = xrr_crtc->y + (int) xrr_crtc->height,
 		};
 		for(int j = 0; j < xrr_crtc->noutput; ++j) {
-			XRROutputInfo *xrr_output = XRRGetOutputInfo(display.display, xrr_screen, xrr_crtc->outputs[j]);
+			XRROutputInfo *xrr_output = XRRGetOutputInfo(display_X11.display, xrr_screen, xrr_crtc->outputs[j]);
 
 			if(nentries + 1 == array_size) {
 				array_size *= 2;
@@ -167,12 +167,10 @@ static const struct display_impl display_impl = {
 	.get_outputs = get_outputs,
 };
 
-struct display_X11 *
-display_X11_create(void) {
-	display.impl = &display_impl;
+const struct display_impl *
+display_X11_init(void) {
+	display_X11.display = XOpenDisplay(NULL);
+	display_X11.root = DefaultRootWindow(display_X11.display);
 
-	display.display = XOpenDisplay(NULL);
-	display.root = DefaultRootWindow(display.display);
-
-	return &display;
+	return &display_impl;
 }

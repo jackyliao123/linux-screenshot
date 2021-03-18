@@ -72,7 +72,7 @@ event_key_press(GtkWidget *widget, GdkEventKey *event) {
 	guint state = event->state & gtk_accelerator_get_default_mod_mask();
 	guint keyval = gdk_keyval_to_lower(event->keyval);
 	keybind_start(keyval, state);
-	return False;
+	return FALSE;
 }
 
 enum keybind_handle_status
@@ -117,7 +117,7 @@ event(GtkWidget *widget, GdkEvent *event) {
 			ui.grabbed = gdk_seat_grab(ui.gdk_seat, ui.gdk_window, GDK_SEAT_CAPABILITY_KEYBOARD, TRUE, NULL, NULL, NULL, NULL) == GDK_GRAB_SUCCESS;
 		}
 	}
-	return False;
+	return FALSE;
 }
 
 extern double t();

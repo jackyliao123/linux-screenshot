@@ -3,7 +3,6 @@
 
 #include <unistd.h>
 
-#include "display_X11.h"
 #include "geometry.h"
 
 struct screenshot {

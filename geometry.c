@@ -29,14 +29,55 @@ contains(const struct rect *bounds, int x, int y) {
 }
 
 struct rect
+geom_shift(const struct rect *r, int dx, int dy) {
+	return (struct rect) {
+		.x1 = r->x1 + dx,
+		.y1 = r->y1 + dy,
+		.x2 = r->x2 + dx,
+		.y2 = r->y2 + dy,
+	};
+}
+
+struct rect
 geom_union(const struct rect *r1, const struct rect *r2) {
-	struct rect res = {
+	return (struct rect) {
 			.x1 = min(r1->x1, r2->x1),
 			.y1 = min(r1->y1, r2->y1),
 			.x2 = max(r1->x2, r2->x2),
 			.y2 = max(r1->y2, r2->y2),
 	};
+}
+
+struct rect
+geom_intersect(const struct rect *r1, const struct rect *r2, bool *intersects) {
+	struct rect res = {
+			.x1 = max(r1->x1, r2->x1),
+			.y1 = max(r1->y1, r2->y1),
+			.x2 = min(r1->x2, r2->x2),
+			.y2 = min(r1->y2, r2->y2),
+	};
+	if(intersects) {
+		*intersects = res.x2 > res.x1 && res.y2 > res.y1;
+	}
 	return res;
+}
+
+struct output *
+geom_get_best_output(struct output_list *outputs, const struct rect *rect) {
+	struct output *best = NULL;
+	size_t best_value = 0;
+	for(size_t i = 0; i < outputs->num_output; ++i) {
+		bool intersects;
+		struct rect intersection = geom_intersect(&outputs->outputs[i].bounds, rect, &intersects);
+		if(intersects) {
+			size_t value = intersection.x2 - intersection.x1 + intersection.y2 - intersection.y1;
+			if(value > best_value) {
+				best_value = value;
+				best = &outputs->outputs[i];
+			}
+		}
+	}
+	return best;
 }
 
 struct rect
